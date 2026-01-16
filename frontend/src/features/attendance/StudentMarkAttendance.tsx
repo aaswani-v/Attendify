@@ -130,6 +130,63 @@ const StudentMarkAttendance = () => {
                     <p>Select a class and verify your presence</p>
                 </div>
 
+                {/* Verification Methods */}
+                <div ref={verificationSectionRef} className="methods-section">
+                    <h2>Select Verification Method</h2>
+                    <div className="methods-grid">
+                        {/* Fingerprint Option */}
+                        <div
+                            className={`method-card ${selectedMethod === 'fingerprint' ? 'selected' : ''}`}
+                            onClick={() => handleMethodSelect('fingerprint')}
+                        >
+                            <div className="method-icon fingerprint">
+                                <i className='bx bx-fingerprint'></i>
+                            </div>
+                            <h3>Fingerprint</h3>
+                            <p>Scan your finger on the device to verify your identity locally.</p>
+                            <div className="method-checks">
+                                <div className="check-item"><i className='bx bx-check-circle'></i> Biometric Scan</div>
+                                <div className="check-item"><i className='bx bx-check-circle'></i> Geofence Check</div>
+                                <div className="check-item"><i className='bx bx-check-circle'></i> CCTV Verification</div>
+                            </div>
+                        </div>
+
+                        {/* Radar Option */}
+                        <div
+                            className={`method-card ${selectedMethod === 'radar' ? 'selected' : ''}`}
+                            onClick={() => handleMethodSelect('radar')}
+                        >
+                            <div className="method-icon radar">
+                                <i className='bx bx-radar'></i>
+                            </div>
+                            <h3>Radar</h3>
+                            <p>Use your device's proximity sensor to detect the teacher's signal.</p>
+                            <div className="method-checks">
+                                <div className="check-item"><i className='bx bx-check-circle'></i> Teacher's Radar</div>
+                                <div className="check-item"><i className='bx bx-check-circle'></i> Bluetooth Range</div>
+                                <div className="check-item"><i className='bx bx-check-circle'></i> Auto Detection</div>
+                            </div>
+                        </div>
+
+                        {/* Facial Recognition Option */}
+                        <div
+                            className={`method-card ${selectedMethod === 'facial' ? 'selected' : ''}`}
+                            onClick={() => handleMethodSelect('facial')}
+                        >
+                            <div className="method-icon facial">
+                                <i className='bx bx-face'></i>
+                            </div>
+                            <h3>Facial Recognition</h3>
+                            <p>Verify your attendance by scanning your face with the camera.</p>
+                            <div className="method-checks">
+                                <div className="check-item"><i className='bx bx-check-circle'></i> Face Scan</div>
+                                <div className="check-item"><i className='bx bx-check-circle'></i> Geofence Check</div>
+                                <div className="check-item"><i className='bx bx-check-circle'></i> Liveness Detection</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Today's Schedule Section (Moved here) */}
                 <div className="sd-card schedule-card" style={{ marginBottom: '30px' }}>
                     <div className="card-header">
@@ -195,63 +252,6 @@ const StudentMarkAttendance = () => {
                                 </div>
                             </div>
                         ))}
-                    </div>
-                </div>
-
-                {/* Verification Methods */}
-                <div ref={verificationSectionRef} className="methods-section">
-                    <h2>Select Verification Method</h2>
-                    <div className="methods-grid">
-                        {/* Fingerprint Option */}
-                        <div
-                            className={`method-card ${selectedMethod === 'fingerprint' ? 'selected' : ''}`}
-                            onClick={() => handleMethodSelect('fingerprint')}
-                        >
-                            <div className="method-icon fingerprint">
-                                <i className='bx bx-fingerprint'></i>
-                            </div>
-                            <h3>Fingerprint</h3>
-                            <p>Scan your finger on the device to verify your identity locally.</p>
-                            <div className="method-checks">
-                                <div className="check-item"><i className='bx bx-check-circle'></i> Biometric Scan</div>
-                                <div className="check-item"><i className='bx bx-check-circle'></i> Geofence Check</div>
-                                <div className="check-item"><i className='bx bx-check-circle'></i> CCTV Verification</div>
-                            </div>
-                        </div>
-
-                        {/* Radar Option */}
-                        <div
-                            className={`method-card ${selectedMethod === 'radar' ? 'selected' : ''}`}
-                            onClick={() => handleMethodSelect('radar')}
-                        >
-                            <div className="method-icon radar">
-                                <i className='bx bx-radar'></i>
-                            </div>
-                            <h3>Radar</h3>
-                            <p>Use your device's proximity sensor to detect the teacher's signal.</p>
-                            <div className="method-checks">
-                                <div className="check-item"><i className='bx bx-check-circle'></i> Teacher's Radar</div>
-                                <div className="check-item"><i className='bx bx-check-circle'></i> Bluetooth Range</div>
-                                <div className="check-item"><i className='bx bx-check-circle'></i> Auto Detection</div>
-                            </div>
-                        </div>
-
-                        {/* Facial Recognition Option */}
-                        <div
-                            className={`method-card ${selectedMethod === 'facial' ? 'selected' : ''}`}
-                            onClick={() => handleMethodSelect('facial')}
-                        >
-                            <div className="method-icon facial">
-                                <i className='bx bx-face'></i>
-                            </div>
-                            <h3>Facial Recognition</h3>
-                            <p>Verify your attendance by scanning your face with the camera.</p>
-                            <div className="method-checks">
-                                <div className="check-item"><i className='bx bx-check-circle'></i> Face Scan</div>
-                                <div className="check-item"><i className='bx bx-check-circle'></i> Geofence Check</div>
-                                <div className="check-item"><i className='bx bx-check-circle'></i> Liveness Detection</div>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
