@@ -1,25 +1,30 @@
 """
-Face Detection and Recognition System with Face Clustering
-Uses YOLO for fast person detection + Haar for face cropping.
-Uses LBPH for face recognition and clustering.
-Groups similar unknown faces together (Google Photos style).
+Face Detection and Recognition System - With Video Recording
+Uses YOLO + Haar + LBPH for face detection and recognition.
 
-Folder Structure:
-    _data-face/
-        ash/                  # Known person
-        john_doe/             # Known person
-        unknown_person_1/     # Clustered unknown #1
-        unknown_person_2/     # Clustered unknown #2
-        ...
+Features:
+- RECORD VIDEO: Press N to record a video, then auto-extract faces
+- WEBCAM CAPTURE: Press A to capture photos one by one
+- SELECT VIDEO: Press V to select existing video file
+- INCREMENTAL TRAINING: Only retrains when folders change
+
+Controls:
+  Q = Quit
+  R = Reload/retrain model  
+  N = NEW person (record video + extract faces) ← EASY MODE
+  A = Add person (webcam photo capture)
+  V = Add from existing video file
 """
 
 import os
 import cv2
+import hashlib
 import numpy as np
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
-import shutil
+import pickle
 
 # Try to import YOLO
 try:
@@ -29,47 +34,36 @@ except ImportError:
     YOLO_AVAILABLE = False
     print("[WARNING] ultralytics not installed, using Haar Cascade only")
 
-# Path to store face data
+# Paths
 DATA_FACE_DIR = Path(__file__).parent / "_data-face"
+MODEL_CACHE_DIR = Path(__file__).parent / "_model_cache"
+VIDEO_DIR = Path(__file__).parent / "_videos"
 
 
-class FaceCluster:
-    """Represents a cluster of similar faces (known or unknown person)."""
-    def __init__(self, folder_path: Path, representative_face: np.ndarray = None):
-        self.folder_path = folder_path
-        self.representative_face = representative_face  # Preprocessed grayscale face
-        self.name = folder_path.name.replace('_', ' ').title()
-        self.is_unknown = folder_path.name.startswith('unknown_person')
+def get_folder_hash(folder: Path) -> str:
+    """Get hash of a folder's contents."""
+    files = sorted(folder.glob("*.jpg"))
+    content = ",".join(f"{f.name}:{f.stat().st_mtime}" for f in files)
+    return hashlib.md5(content.encode()).hexdigest()
 
 
 class FaceDetector:
-    """
-    Face detection, recognition, and clustering system.
+    """Face detection and recognition with video recording support."""
     
-    Features:
-    - YOLO + Haar detection
-    - LBPH recognition
-    - Face clustering: similar unknown faces grouped together
-    """
-    
-    def __init__(self, max_distance: float = 80.0, cluster_threshold: float = 70.0):
-        """
-        Initialize the face detector.
-        
-        Args:
-            max_distance: Max LBPH distance for recognition (lower = stricter).
-            cluster_threshold: Max distance to consider same unknown person.
-        """
+    def __init__(self, max_distance: float = 80.0, detection_scale: float = 0.5,
+                 skip_frames: int = 2):
         self.max_distance = max_distance
-        self.cluster_threshold = cluster_threshold
+        self.detection_scale = detection_scale
+        self.skip_frames = skip_frames
         self.known_face_labels: Dict[int, str] = {}
         self.label_counter = 0
         
-        # Face clusters for unknown persons
-        self.unknown_clusters: List[FaceCluster] = []
+        self.frame_count = 0
+        self.cached_faces = []
+        self.cached_results = []
+        self.folder_hashes: Dict[str, str] = {}
         
-        # Initialize Haar Cascade
-        print("[INFO] Loading face detection cascades...")
+        print("[INFO] Loading cascades...")
         self.face_cascade = cv2.CascadeClassifier(
             cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
         )
@@ -77,552 +71,633 @@ class FaceDetector:
             cv2.data.haarcascades + 'haarcascade_frontalface_alt2.xml'
         )
         
-        # Initialize YOLO
         self.yolo_model = None
         if YOLO_AVAILABLE:
-            print("[INFO] Loading YOLO model...")
+            print("[INFO] Loading YOLO...")
             try:
                 self.yolo_model = YOLO('yolov8n.pt')
-                print("[INFO] YOLO loaded - using hybrid detection")
+                print("[INFO] YOLO loaded")
             except Exception as e:
                 print(f"[WARNING] YOLO failed: {e}")
         
-        # Initialize LBPH Face Recognizer
-        print("[INFO] Initializing face recognizer...")
         self.recognizer = cv2.face.LBPHFaceRecognizer_create(
             radius=1, neighbors=8, grid_x=8, grid_y=8, threshold=200.0
         )
         self.is_trained = False
         
-        # Cluster recognizer for unknown faces
-        self.cluster_recognizer = cv2.face.LBPHFaceRecognizer_create(
-            radius=1, neighbors=8, grid_x=8, grid_y=8, threshold=200.0
-        )
-        self.cluster_trained = False
-        
-        # Ensure directories exist
         DATA_FACE_DIR.mkdir(parents=True, exist_ok=True)
+        MODEL_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        VIDEO_DIR.mkdir(parents=True, exist_ok=True)
         
-        # Load known faces and clusters
-        self.load_known_faces()
-        self.load_unknown_clusters()
+        self.load_model()
     
     def preprocess_face(self, face_roi: np.ndarray) -> np.ndarray:
-        """Preprocess face for recognition."""
         face = cv2.resize(face_roi, (100, 100))
         face = cv2.equalizeHist(face)
         return face
     
-    def load_known_faces(self) -> int:
-        """Load faces from known person folders."""
+    def load_model(self) -> bool:
+        model_path = MODEL_CACHE_DIR / "lbph_model.yml"
+        labels_path = MODEL_CACHE_DIR / "labels.pkl"
+        hashes_path = MODEL_CACHE_DIR / "folder_hashes.pkl"
+        
+        if hashes_path.exists():
+            with open(hashes_path, 'rb') as f:
+                self.folder_hashes = pickle.load(f)
+        
+        current_folders = {}
+        changed = []
+        
+        for folder in DATA_FACE_DIR.iterdir():
+            if not folder.is_dir() or folder.name.startswith('unknown'):
+                continue
+            h = get_folder_hash(folder)
+            current_folders[folder.name] = h
+            if folder.name not in self.folder_hashes or self.folder_hashes[folder.name] != h:
+                changed.append(folder.name)
+        
+        deleted = set(self.folder_hashes.keys()) - set(current_folders.keys())
+        if deleted:
+            changed.extend(deleted)
+        
+        if not changed and model_path.exists() and labels_path.exists():
+            print("[INFO] No changes, loading cache...")
+            try:
+                self.recognizer.read(str(model_path))
+                with open(labels_path, 'rb') as f:
+                    d = pickle.load(f)
+                self.known_face_labels = d['labels']
+                self.label_counter = d['counter']
+                self.is_trained = True
+                print(f"[INFO] Loaded {len(self.known_face_labels)} persons")
+                return True
+            except:
+                pass
+        
+        if changed:
+            print(f"[INFO] {len(changed)} folder(s) changed")
+        return self._train_all(current_folders)
+    
+    def _train_all(self, hashes: Dict[str, str]) -> bool:
         self.known_face_labels = {}
         self.label_counter = 0
         faces = []
         labels = []
-        name_to_label: Dict[str, int] = {}
+        name_to_label = {}
         
-        loaded_count = 0
-        
-        for person_folder in DATA_FACE_DIR.iterdir():
-            if not person_folder.is_dir():
-                continue
-            # Skip unknown_person clusters
-            if person_folder.name.startswith('unknown_person'):
+        for folder in DATA_FACE_DIR.iterdir():
+            if not folder.is_dir() or folder.name.startswith('unknown'):
                 continue
             
-            person_name = person_folder.name.replace('_', ' ').title()
-            
-            if person_name not in name_to_label:
-                name_to_label[person_name] = self.label_counter
-                self.known_face_labels[self.label_counter] = person_name
+            name = folder.name.replace('_', ' ').title()
+            if name not in name_to_label:
+                name_to_label[name] = self.label_counter
+                self.known_face_labels[self.label_counter] = name
                 self.label_counter += 1
             
-            label = name_to_label[person_name]
-            person_loaded = 0
+            label = name_to_label[name]
+            count = 0
             
-            for image_path in person_folder.iterdir():
-                if image_path.suffix.lower() not in ['.jpg', '.jpeg', '.png']:
+            for img_path in folder.iterdir():
+                if img_path.suffix.lower() not in ['.jpg', '.jpeg', '.png']:
                     continue
-                
                 try:
-                    image = cv2.imread(str(image_path), cv2.IMREAD_GRAYSCALE)
-                    if image is None:
+                    img = cv2.imread(str(img_path), cv2.IMREAD_GRAYSCALE)
+                    if img is None:
                         continue
-                    
-                    face_rects = self.face_cascade.detectMultiScale(
-                        image, scaleFactor=1.1, minNeighbors=3, minSize=(20, 20)
-                    )
-                    
-                    if len(face_rects) > 0:
-                        x, y, w, h = max(face_rects, key=lambda r: r[2] * r[3])
-                        face_roi = image[y:y+h, x:x+w]
+                    rects = self.face_cascade.detectMultiScale(img, 1.1, 3, minSize=(20, 20))
+                    if len(rects) > 0:
+                        x, y, w, h = max(rects, key=lambda r: r[2]*r[3])
+                        roi = img[y:y+h, x:x+w]
                     else:
-                        face_roi = image
-                    
-                    face_roi = self.preprocess_face(face_roi)
-                    faces.append(face_roi)
+                        roi = img
+                    faces.append(self.preprocess_face(roi))
                     labels.append(label)
-                    person_loaded += 1
-                except Exception as e:
-                    print(f"[ERROR] {image_path.name}: {e}")
+                    count += 1
+                except:
+                    pass
             
-            if person_loaded > 0:
-                print(f"[INFO] Loaded {person_loaded} images for: {person_name}")
-                loaded_count += person_loaded
+            if count > 0:
+                print(f"[INFO] {folder.name}: {count} images")
         
         if faces:
             self.recognizer.train(faces, np.array(labels))
             self.is_trained = True
-            print(f"[INFO] Trained on {loaded_count} faces, {len(name_to_label)} person(s)")
-        else:
-            self.is_trained = False
-        
-        return loaded_count
+            print(f"[TRAINED] {len(faces)} faces, {len(name_to_label)} persons")
+            self._save_cache(hashes)
+            return True
+        return False
     
-    def load_unknown_clusters(self) -> int:
-        """Load unknown person clusters and train cluster recognizer."""
-        self.unknown_clusters = []
-        faces = []
-        labels = []
-        
-        cluster_idx = 0
-        for folder in DATA_FACE_DIR.iterdir():
-            if not folder.is_dir() or not folder.name.startswith('unknown_person'):
-                continue
-            
-            # Get representative face from first image
-            images = list(folder.glob("*.jpg"))
-            if not images:
-                continue
-            
-            rep_face = None
-            folder_faces = []
-            
-            for img_path in images:
-                try:
-                    image = cv2.imread(str(img_path), cv2.IMREAD_GRAYSCALE)
-                    if image is None:
-                        continue
-                    
-                    face_rects = self.face_cascade.detectMultiScale(
-                        image, scaleFactor=1.1, minNeighbors=3, minSize=(20, 20)
-                    )
-                    
-                    if len(face_rects) > 0:
-                        x, y, w, h = max(face_rects, key=lambda r: r[2] * r[3])
-                        face_roi = image[y:y+h, x:x+w]
-                    else:
-                        face_roi = image
-                    
-                    face_roi = self.preprocess_face(face_roi)
-                    folder_faces.append(face_roi)
-                    
-                    if rep_face is None:
-                        rep_face = face_roi
-                except:
-                    pass
-            
-            if rep_face is not None:
-                cluster = FaceCluster(folder, rep_face)
-                self.unknown_clusters.append(cluster)
-                
-                for face in folder_faces:
-                    faces.append(face)
-                    labels.append(cluster_idx)
-                
-                print(f"[INFO] Loaded cluster: {folder.name} ({len(folder_faces)} images)")
-                cluster_idx += 1
-        
-        if faces:
-            self.cluster_recognizer.train(faces, np.array(labels))
-            self.cluster_trained = True
-            print(f"[INFO] {len(self.unknown_clusters)} unknown person clusters")
-        
-        return len(self.unknown_clusters)
-    
-    def find_cluster_for_face(self, face_gray: np.ndarray) -> Optional[FaceCluster]:
-        """Find which cluster an unknown face belongs to."""
-        if not self.cluster_trained or not self.unknown_clusters:
-            return None
-        
-        face = self.preprocess_face(face_gray)
-        
+    def _save_cache(self, hashes):
         try:
-            label, distance = self.cluster_recognizer.predict(face)
-            if distance <= self.cluster_threshold and label < len(self.unknown_clusters):
-                return self.unknown_clusters[label]
+            self.recognizer.save(str(MODEL_CACHE_DIR / "lbph_model.yml"))
+            with open(MODEL_CACHE_DIR / "labels.pkl", 'wb') as f:
+                pickle.dump({'labels': self.known_face_labels, 'counter': self.label_counter}, f)
+            with open(MODEL_CACHE_DIR / "folder_hashes.pkl", 'wb') as f:
+                pickle.dump(hashes, f)
+            self.folder_hashes = hashes
         except:
             pass
-        
-        return None
     
-    def create_new_cluster(self, face_image: np.ndarray, face_gray: np.ndarray) -> Path:
-        """Create a new unknown person cluster folder."""
-        # Find next cluster number
-        existing = [
-            int(d.name.replace('unknown_person_', ''))
-            for d in DATA_FACE_DIR.iterdir()
-            if d.is_dir() and d.name.startswith('unknown_person_')
-        ]
-        next_num = max(existing) + 1 if existing else 1
-        
-        folder = DATA_FACE_DIR / f"unknown_person_{next_num}"
-        folder.mkdir(parents=True, exist_ok=True)
-        
-        # Save face
-        filepath = folder / "1.jpg"
-        cv2.imwrite(str(filepath), face_image)
-        
-        # Create cluster object
-        face_processed = self.preprocess_face(face_gray)
-        cluster = FaceCluster(folder, face_processed)
-        self.unknown_clusters.append(cluster)
-        
-        # Retrain cluster recognizer
-        self._retrain_cluster_recognizer()
-        
-        print(f"[NEW CLUSTER] Created: {folder.name}")
-        return folder
+    def force_retrain(self):
+        hashes = {}
+        for folder in DATA_FACE_DIR.iterdir():
+            if folder.is_dir() and not folder.name.startswith('unknown'):
+                hashes[folder.name] = get_folder_hash(folder)
+        self._train_all(hashes)
     
-    def _retrain_cluster_recognizer(self):
-        """Retrain cluster recognizer with current clusters."""
-        if not self.unknown_clusters:
-            self.cluster_trained = False
-            return
-        
-        faces = []
-        labels = []
-        
-        for idx, cluster in enumerate(self.unknown_clusters):
-            # Load all faces from cluster folder
-            for img_path in cluster.folder_path.glob("*.jpg"):
-                try:
-                    image = cv2.imread(str(img_path), cv2.IMREAD_GRAYSCALE)
-                    if image is None:
-                        continue
-                    
-                    face_rects = self.face_cascade.detectMultiScale(
-                        image, scaleFactor=1.1, minNeighbors=3, minSize=(20, 20)
-                    )
-                    
-                    if len(face_rects) > 0:
-                        x, y, w, h = max(face_rects, key=lambda r: r[2] * r[3])
-                        face_roi = image[y:y+h, x:x+w]
-                    else:
-                        face_roi = image
-                    
-                    face_roi = self.preprocess_face(face_roi)
-                    faces.append(face_roi)
-                    labels.append(idx)
-                except:
-                    pass
-        
-        if faces:
-            self.cluster_recognizer = cv2.face.LBPHFaceRecognizer_create(
-                radius=1, neighbors=8, grid_x=8, grid_y=8, threshold=200.0
-            )
-            self.cluster_recognizer.train(faces, np.array(labels))
-            self.cluster_trained = True
-    
-    def detect_faces(self, frame: np.ndarray) -> List[Tuple[int, int, int, int]]:
-        """Detect faces using YOLO + Haar."""
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    def detect_faces_fast(self, frame: np.ndarray) -> List[Tuple[int, int, int, int]]:
+        scale = self.detection_scale
+        small = cv2.resize(frame, None, fx=scale, fy=scale)
+        gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
         all_faces = []
         
-        if self.yolo_model is not None:
-            results = self.yolo_model(frame, verbose=False, classes=[0])
-            
-            for result in results:
-                for box in result.boxes:
+        if self.yolo_model:
+            results = self.yolo_model(small, verbose=False, classes=[0], conf=0.5)
+            for r in results:
+                for box in r.boxes:
                     px1, py1, px2, py2 = map(int, box.xyxy[0])
                     px1, py1 = max(0, px1), max(0, py1)
-                    px2, py2 = min(frame.shape[1], px2), min(frame.shape[0], py2)
-                    
+                    px2, py2 = min(small.shape[1], px2), min(small.shape[0], py2)
                     if px2 <= px1 or py2 <= py1:
                         continue
-                    
-                    person_gray = gray[py1:py2, px1:px2]
-                    faces = self.face_cascade.detectMultiScale(
-                        person_gray, scaleFactor=1.1, minNeighbors=4, minSize=(30, 30)
-                    )
-                    
+                    person = gray[py1:py2, px1:px2]
+                    faces = self.face_cascade.detectMultiScale(person, 1.1, 4, minSize=(20, 20))
                     if len(faces) == 0:
-                        faces = self.alt_cascade.detectMultiScale(
-                            person_gray, scaleFactor=1.1, minNeighbors=4, minSize=(30, 30)
-                        )
-                    
+                        faces = self.alt_cascade.detectMultiScale(person, 1.1, 4, minSize=(20, 20))
                     for (fx, fy, fw, fh) in faces:
-                        all_faces.append((px1 + fx, py1 + fy, fw, fh))
-            
-            if len(all_faces) == 0:
-                faces = self.face_cascade.detectMultiScale(
-                    gray, scaleFactor=1.1, minNeighbors=5, minSize=(50, 50)
-                )
-                all_faces.extend(list(faces))
-        else:
-            faces = self.face_cascade.detectMultiScale(
-                gray, scaleFactor=1.1, minNeighbors=5, minSize=(50, 50)
-            )
-            if len(faces) == 0:
-                faces = self.alt_cascade.detectMultiScale(
-                    gray, scaleFactor=1.1, minNeighbors=5, minSize=(50, 50)
-                )
-            all_faces = list(faces)
+                        all_faces.append((int((px1+fx)/scale), int((py1+fy)/scale), int(fw/scale), int(fh/scale)))
+        
+        if not all_faces:
+            faces = self.face_cascade.detectMultiScale(gray, 1.1, 5, minSize=(30, 30))
+            for (x, y, w, h) in faces:
+                all_faces.append((int(x/scale), int(y/scale), int(w/scale), int(h/scale)))
         
         return all_faces
     
-    def recognize_face(self, frame: np.ndarray, face_rect: Tuple[int, int, int, int]) -> Tuple[str, float, float]:
-        """Recognize a face."""
+    def recognize_face(self, frame, rect) -> Tuple[str, float, float]:
         if not self.is_trained:
             return "Unknown", 0.0, 999.0
-        
-        x, y, w, h = face_rect
+        x, y, w, h = rect
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         x, y = max(0, x), max(0, y)
-        x2, y2 = min(gray.shape[1], x + w), min(gray.shape[0], y + h)
-        
+        x2, y2 = min(gray.shape[1], x+w), min(gray.shape[0], y+h)
         if x2 <= x or y2 <= y:
             return "Unknown", 0.0, 999.0
-        
-        face_roi = gray[y:y2, x:x2]
-        face_roi = self.preprocess_face(face_roi)
-        
+        roi = self.preprocess_face(gray[y:y2, x:x2])
         try:
-            label, distance = self.recognizer.predict(face_roi)
-            confidence = max(0, min(100, 100 - (distance * 0.7)))
-            
-            if distance <= self.max_distance:
-                name = self.known_face_labels.get(label, "Unknown")
-                return name, confidence, distance
+            label, dist = self.recognizer.predict(roi)
+            conf = max(0, min(100, 100 - dist * 0.7))
+            if dist <= self.max_distance:
+                return self.known_face_labels.get(label, "Unknown"), conf, dist
         except:
             pass
-        
         return "Unknown", 0.0, 999.0
     
-    def save_face(self, frame: np.ndarray, face_rect: Tuple[int, int, int, int], 
-                  name: str = None) -> str:
-        """
-        Save face to appropriate folder with clustering.
-        
-        Known faces -> {name}/
-        Unknown faces -> clustered into unknown_person_X/
-        """
-        x, y, w, h = face_rect
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        
-        # Add padding
-        padding = 30
-        height, width = frame.shape[:2]
-        x1, y1 = max(0, x - padding), max(0, y - padding)
-        x2, y2 = min(width, x + w + padding), min(height, y + h + padding)
-        
-        face_image = frame[y1:y2, x1:x2]
-        face_gray = gray[max(0, y):min(gray.shape[0], y+h), max(0, x):min(gray.shape[1], x+w)]
-        
-        if name and name != "Unknown":
-            # Save to known person's folder
-            folder_name = name.lower().replace(' ', '_')
-            person_folder = DATA_FACE_DIR / folder_name
-            person_folder.mkdir(parents=True, exist_ok=True)
-            
-            existing = list(person_folder.glob("*.jpg"))
-            filepath = person_folder / f"{len(existing) + 1}.jpg"
-        else:
-            # Find or create cluster for this unknown face
-            cluster = self.find_cluster_for_face(face_gray)
-            
-            if cluster is not None:
-                # Add to existing cluster
-                existing = list(cluster.folder_path.glob("*.jpg"))
-                filepath = cluster.folder_path / f"{len(existing) + 1}.jpg"
-            else:
-                # Create new cluster
-                folder = self.create_new_cluster(face_image, face_gray)
-                return str(folder / "1.jpg")
-        
-        cv2.imwrite(str(filepath), face_image)
-        print(f"[SAVED] {filepath.relative_to(DATA_FACE_DIR)}")
-        return str(filepath)
+    def get_folder(self, name: str) -> Path:
+        folder_name = name.lower().strip().replace(' ', '_')
+        folder_name = ''.join(c for c in folder_name if c.isalnum() or c == '_')
+        folder = DATA_FACE_DIR / folder_name
+        folder.mkdir(parents=True, exist_ok=True)
+        return folder
     
-    def run_camera_feed(self, camera_index: int = 0, save_unknown: bool = True, 
-                        save_recognized: bool = True, save_interval: float = 5.0) -> None:
-        """Run real-time camera feed."""
-        print("\n" + "=" * 50)
-        print("Face Detection with Clustering")
-        print("=" * 50)
-        print("Controls: Q=quit, R=reload, S=save")
-        print("=" * 50 + "\n")
+    def get_next_num(self, folder: Path) -> int:
+        nums = []
+        for f in folder.glob("*.jpg"):
+            try:
+                nums.append(int(f.stem))
+            except:
+                pass
+        return max(nums, default=0) + 1
+    
+    def record_and_extract(self, person_name: str, duration: int = 10, camera_index: int = 0) -> int:
+        """
+        Record a video of the person, then extract faces from it.
+        
+        Args:
+            person_name: Name of the person
+            duration: Recording duration in seconds
+            camera_index: Camera to use
+            
+        Returns:
+            Number of faces extracted
+        """
+        print(f"\n{'='*50}")
+        print(f"RECORDING: {person_name}")
+        print(f"Duration: {duration} seconds")
+        print(f"{'='*50}")
+        print("\nTips for best results:")
+        print("  - Move your head left/right slowly")
+        print("  - Look up/down")
+        print("  - Show different expressions")
+        print("  - Move closer/farther from camera")
+        print(f"{'='*50}\n")
         
         cap = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW)
         if not cap.isOpened():
             cap = cv2.VideoCapture(camera_index)
         
         if not cap.isOpened():
-            print("[ERROR] Could not open camera")
-            return
+            print("[ERROR] Cannot open camera")
+            return 0
         
-        print("[INFO] Camera ready!")
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
         
-        window_name = 'Face Detection [Q:quit R:reload S:save]'
-        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-        cv2.resizeWindow(window_name, 800, 600)
+        # Video file
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        video_path = VIDEO_DIR / f"{person_name}_{timestamp}.mp4"
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        fps = 20.0
+        out = cv2.VideoWriter(str(video_path), fourcc, fps, (1280, 720))
         
-        last_save_time: Dict[str, float] = {}
-        debug_count = 0
+        window = f'Recording: {person_name} [{duration}s]'
+        cv2.namedWindow(window, cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(window, 800, 600)
+        
+        print("[INFO] Recording starting in 3 seconds...")
+        
+        # Countdown
+        for i in range(3, 0, -1):
+            ret, frame = cap.read()
+            if ret:
+                display = frame.copy()
+                cv2.putText(display, str(i), (frame.shape[1]//2 - 50, frame.shape[0]//2 + 50),
+                           cv2.FONT_HERSHEY_SIMPLEX, 5, (0, 255, 0), 10)
+                cv2.imshow(window, display)
+            cv2.waitKey(1000)
+        
+        print("[RECORDING] Started! Move your head around...")
+        
+        start_time = time.time()
+        frame_count = 0
         
         while True:
             ret, frame = cap.read()
             if not ret:
                 break
             
-            face_rects = self.detect_faces(frame)
+            elapsed = time.time() - start_time
+            remaining = max(0, duration - elapsed)
             
-            for face_rect in face_rects:
-                x, y, w, h = face_rect
-                name, confidence, distance = self.recognize_face(frame, face_rect)
-                current_time = datetime.now().timestamp()
+            if elapsed >= duration:
+                break
+            
+            # Write to video
+            out.write(frame)
+            frame_count += 1
+            
+            # Display
+            display = frame.copy()
+            
+            # Timer bar
+            progress = int((elapsed / duration) * frame.shape[1])
+            cv2.rectangle(display, (0, 0), (progress, 30), (0, 255, 0), -1)
+            cv2.rectangle(display, (0, 0), (frame.shape[1], 30), (255, 255, 255), 2)
+            
+            cv2.putText(display, f"Recording: {remaining:.1f}s left", (10, 60),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+            cv2.putText(display, f"Person: {person_name}", (10, 90),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+            cv2.putText(display, "Move head: left/right, up/down", (10, frame.shape[0] - 20),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1)
+            
+            cv2.imshow(window, display)
+            
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        
+        out.release()
+        cap.release()
+        cv2.destroyWindow(window)
+        
+        print(f"\n[SAVED] Video: {video_path}")
+        print(f"[INFO] Frames recorded: {frame_count}")
+        
+        # Now extract faces
+        print("\n[EXTRACTING] Processing video for faces...")
+        extracted = self.extract_from_video(str(video_path), person_name)
+        
+        return extracted
+    
+    def extract_from_video(self, video_path: str, person_name: str, 
+                           max_frames: int = 100, interval: int = 3) -> int:
+        """Extract faces from a video file."""
+        folder = self.get_folder(person_name)
+        img_num = self.get_next_num(folder)
+        
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            print(f"[ERROR] Cannot open: {video_path}")
+            return 0
+        
+        total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        print(f"[VIDEO] {total} frames")
+        
+        cv2.namedWindow("Extracting", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("Extracting", 640, 480)
+        
+        extracted = 0
+        idx = 0
+        
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            
+            idx += 1
+            if idx % interval != 0:
+                continue
+            
+            faces = self.detect_faces_fast(frame)
+            
+            if len(faces) == 1:
+                x, y, w, h = faces[0]
+                pad = 30
+                H, W = frame.shape[:2]
+                x1, y1 = max(0, x-pad), max(0, y-pad)
+                x2, y2 = min(W, x+w+pad), min(H, y+h+pad)
                 
-                if debug_count < 15:
-                    print(f"[DEBUG] Dist: {distance:.1f}, Conf: {confidence:.1f}%, Name: {name}")
-                    debug_count += 1
+                face_img = frame[y1:y2, x1:x2]
                 
-                if name == "Unknown":
-                    color = (0, 0, 255)
-                    if save_unknown:
-                        last_save = last_save_time.get("unknown", 0)
-                        if (current_time - last_save) > save_interval:
-                            self.save_face(frame, face_rect, None)
-                            last_save_time["unknown"] = current_time
-                else:
-                    color = (0, 255, 0)
-                    if save_recognized:
-                        last_save = last_save_time.get(name, 0)
-                        if (current_time - last_save) > save_interval * 2:
-                            self.save_face(frame, face_rect, name)
-                            last_save_time[name] = current_time
+                if face_img.shape[0] >= 80 and face_img.shape[1] >= 80:
+                    gray = cv2.cvtColor(face_img, cv2.COLOR_BGR2GRAY)
+                    blur = cv2.Laplacian(gray, cv2.CV_64F).var()
+                    
+                    if blur > 50:
+                        cv2.imwrite(str(folder / f"{img_num}.jpg"), face_img)
+                        extracted += 1
+                        img_num += 1
+                        cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
+            
+            progress = int((idx / total) * 100)
+            cv2.putText(frame, f"{progress}% - Extracted: {extracted}", (10, 30),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            cv2.imshow("Extracting", frame)
+            
+            if cv2.waitKey(1) & 0xFF == ord('q') or extracted >= max_frames:
+                break
+        
+        cap.release()
+        cv2.destroyWindow("Extracting")
+        
+        print(f"\n[DONE] Extracted {extracted} faces for {person_name}")
+        return extracted
+    
+    def capture_photos(self, person_name: str, camera_index: int = 0) -> int:
+        """Capture individual photos."""
+        folder = self.get_folder(person_name)
+        img_num = self.get_next_num(folder)
+        
+        cap = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW)
+        if not cap.isOpened():
+            cap = cv2.VideoCapture(camera_index)
+        if not cap.isOpened():
+            return 0
+        
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+        
+        window = f'Capture: {person_name} [SPACE=snap Q=done]'
+        cv2.namedWindow(window, cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(window, 800, 600)
+        
+        captured = 0
+        print(f"\n[CAPTURE] {person_name}")
+        print("[INFO] SPACE=capture, Q=done\n")
+        
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            
+            display = frame.copy()
+            faces = self.detect_faces_fast(frame)
+            
+            for (x, y, w, h) in faces:
+                cv2.rectangle(display, (x, y), (x+w, y+h), (0, 255, 0), 2)
+            
+            cv2.putText(display, f"{person_name} - Captured: {captured}", (10, 30),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+            
+            cv2.imshow(window, display)
+            key = cv2.waitKey(1) & 0xFF
+            
+            if key == ord(' ') and faces:
+                x, y, w, h = max(faces, key=lambda r: r[2]*r[3])
+                pad = 30
+                H, W = frame.shape[:2]
+                x1, y1 = max(0, x-pad), max(0, y-pad)
+                x2, y2 = min(W, x+w+pad), min(H, y+h+pad)
+                cv2.imwrite(str(folder / f"{img_num}.jpg"), frame[y1:y2, x1:x2])
+                captured += 1
+                img_num += 1
+                print(f"  [+] {img_num-1}.jpg")
+            elif key == ord('q'):
+                break
+        
+        cap.release()
+        cv2.destroyWindow(window)
+        return captured
+    
+    def run(self, camera_index: int = 0):
+        """Main loop."""
+        print("\n" + "=" * 50)
+        print("Face Detection & Recognition")
+        print("=" * 50)
+        print("Controls:")
+        print("  N = NEW person (record video - EASY)")
+        print("  A = Add person (photo capture)")
+        print("  V = Add from video file")
+        print("  R = Retrain model")
+        print("  Q = Quit")
+        print("=" * 50 + "\n")
+        
+        cap = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW)
+        if not cap.isOpened():
+            cap = cv2.VideoCapture(camera_index)
+        if not cap.isOpened():
+            print("[ERROR] No camera")
+            return
+        
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        
+        print("[INFO] Camera ready!")
+        
+        window = 'Face Detection [N:new A:add V:video R:retrain Q:quit]'
+        cv2.namedWindow(window, cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(window, 800, 600)
+        
+        fps_start = time.time()
+        fps_count = 0
+        fps = 0
+        
+        # Text input state
+        input_mode = False
+        input_text = ""
+        input_action = ""  # "record", "capture", "video"
+        
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            
+            fps_count += 1
+            if time.time() - fps_start >= 1.0:
+                fps = fps_count
+                fps_count = 0
+                fps_start = time.time()
+            
+            display = frame.copy()
+            
+            if input_mode:
+                # Show text input overlay
+                overlay = display.copy()
+                cv2.rectangle(overlay, (0, 0), (display.shape[1], 120), (0, 0, 0), -1)
+                cv2.addWeighted(overlay, 0.8, display, 0.2, 0, display)
                 
-                cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
-                label = "Unknown" if name == "Unknown" else f"{name} ({confidence:.0f}%)"
-                label_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)[0]
-                cv2.rectangle(frame, (x, y - 25), (x + label_size[0] + 10, y), color, -1)
-                cv2.putText(frame, label, (x + 5, y - 7), 
+                action_text = {"record": "Record Video", "capture": "Photo Capture", "video": "Video Path"}
+                cv2.putText(display, f"[{action_text.get(input_action, '')}] Enter name:", (10, 40),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+                cv2.putText(display, input_text + "_", (10, 90),
+                           cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 2)
+                cv2.putText(display, "ENTER=confirm  ESC=cancel", (10, display.shape[0] - 20),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1)
+            else:
+                # Detection
+                self.frame_count += 1
+                if self.frame_count % self.skip_frames == 0:
+                    self.cached_faces = self.detect_faces_fast(frame)
+                    self.cached_results = [self.recognize_face(frame, r) for r in self.cached_faces]
+                
+                for i, (x, y, w, h) in enumerate(self.cached_faces):
+                    if i < len(self.cached_results):
+                        name, conf, _ = self.cached_results[i]
+                    else:
+                        name, conf = "Unknown", 0
+                    
+                    color = (0, 255, 0) if name != "Unknown" else (0, 0, 255)
+                    label = f"{name} ({conf:.0f}%)" if name != "Unknown" else "Unknown"
+                    
+                    cv2.rectangle(display, (x, y), (x+w, y+h), color, 2)
+                    cv2.putText(display, label, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+                
+                cv2.putText(display, f"FPS: {fps}", (10, 30),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                cv2.putText(display, f"Persons: {len(self.known_face_labels)}", (10, 60),
                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
             
-            cv2.imshow(window_name, frame)
-            
+            cv2.imshow(window, display)
             key = cv2.waitKey(1) & 0xFF
-            if key == ord('q'):
-                break
-            elif key == ord('r'):
-                print("\n[INFO] Reloading...")
-                self.load_known_faces()
-                self.load_unknown_clusters()
-                debug_count = 0
-            elif key == ord('s'):
-                for face_rect in face_rects:
-                    self.save_face(frame, face_rect, None)
+            
+            if input_mode:
+                if key == 27:  # ESC
+                    input_mode = False
+                    input_text = ""
+                elif key == 13:  # ENTER
+                    if input_text.strip():
+                        name = input_text.strip()
+                        cv2.destroyWindow(window)
+                        cap.release()
+                        
+                        if input_action == "record":
+                            # Ask for duration
+                            print(f"\nRecording for: {name}")
+                            print("Enter duration in seconds (default 10): ", end="")
+                            try:
+                                dur_input = input().strip()
+                                duration = int(dur_input) if dur_input else 10
+                            except:
+                                duration = 10
+                            
+                            count = self.record_and_extract(name, duration, camera_index)
+                        elif input_action == "capture":
+                            count = self.capture_photos(name, camera_index)
+                        elif input_action == "video":
+                            print(f"\nEnter full path to video file: ", end="")
+                            video_path = input().strip()
+                            if video_path and os.path.exists(video_path):
+                                count = self.extract_from_video(video_path, name)
+                            else:
+                                print("[ERROR] File not found")
+                                count = 0
+                        else:
+                            count = 0
+                        
+                        if count > 0:
+                            print("\n[INFO] Retraining...")
+                            self.force_retrain()
+                        
+                        # Reopen camera
+                        cap = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW)
+                        if not cap.isOpened():
+                            cap = cv2.VideoCapture(camera_index)
+                        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                        cv2.namedWindow(window, cv2.WINDOW_NORMAL)
+                        cv2.resizeWindow(window, 800, 600)
+                    
+                    input_mode = False
+                    input_text = ""
+                elif key == 8:  # BACKSPACE
+                    input_text = input_text[:-1]
+                elif 32 <= key <= 126:
+                    input_text += chr(key)
+            else:
+                if key == ord('q') or key == ord('Q'):
+                    break
+                elif key == ord('r') or key == ord('R'):
+                    self.force_retrain()
+                elif key == ord('n') or key == ord('N'):
+                    input_mode = True
+                    input_text = ""
+                    input_action = "record"
+                elif key == ord('a') or key == ord('A'):
+                    input_mode = True
+                    input_text = ""
+                    input_action = "capture"
+                elif key == ord('v') or key == ord('V'):
+                    input_mode = True
+                    input_text = ""
+                    input_action = "video"
         
         cap.release()
         cv2.destroyAllWindows()
-        print("[INFO] Camera stopped")
-
-
-def rename_cluster_folder(old_name: str, new_name: str) -> bool:
-    """
-    Rename a cluster folder and renumber all files inside.
-    
-    Args:
-        old_name: Current folder name (e.g., 'unknown_person_1')
-        new_name: New person name (e.g., 'john_doe')
-    
-    Returns:
-        True if successful
-    """
-    old_folder = DATA_FACE_DIR / old_name
-    if not old_folder.exists():
-        print(f"[ERROR] Folder not found: {old_name}")
-        return False
-    
-    # Sanitize new name
-    new_name_clean = new_name.lower().strip().replace(' ', '_')
-    new_name_clean = ''.join(c for c in new_name_clean if c.isalnum() or c == '_')
-    
-    new_folder = DATA_FACE_DIR / new_name_clean
-    
-    if new_folder.exists():
-        print(f"[ERROR] Folder already exists: {new_name_clean}")
-        return False
-    
-    # Rename folder
-    old_folder.rename(new_folder)
-    
-    # Renumber files
-    images = sorted(new_folder.glob("*.jpg"))
-    for i, img_path in enumerate(images, 1):
-        new_path = new_folder / f"{i}.jpg"
-        if img_path != new_path:
-            img_path.rename(new_path)
-    
-    print(f"[RENAMED] {old_name} -> {new_name_clean}/ ({len(images)} files)")
-    return True
-
-
-def list_clusters():
-    """List all person folders and their image counts."""
-    print("\n" + "=" * 50)
-    print("Face Data Folders")
-    print("=" * 50)
-    
-    known = []
-    unknown = []
-    
-    for folder in sorted(DATA_FACE_DIR.iterdir()):
-        if not folder.is_dir():
-            continue
-        
-        count = len(list(folder.glob("*.jpg")))
-        if folder.name.startswith('unknown_person'):
-            unknown.append((folder.name, count))
-        else:
-            known.append((folder.name, count))
-    
-    if known:
-        print("\n[KNOWN PERSONS]")
-        for name, count in known:
-            display_name = name.replace('_', ' ').title()
-            print(f"  {name}/ ({count} images) -> {display_name}")
-    
-    if unknown:
-        print("\n[UNKNOWN CLUSTERS] - Rename to identify:")
-        for name, count in unknown:
-            print(f"  {name}/ ({count} images)")
-        print("\n  To rename: python face_model.py --rename unknown_person_1 john_doe")
-    
-    print("=" * 50 + "\n")
+        print("[INFO] Done")
 
 
 if __name__ == "__main__":
     import sys
     
     print("=" * 50)
-    print("Face Detection & Clustering System")
+    print("Face Recognition System")
     print("=" * 50)
-    print(f"Data: {DATA_FACE_DIR}")
-    print(f"YOLO: {'Available' if YOLO_AVAILABLE else 'Not installed'}")
     
     if len(sys.argv) > 1:
         if sys.argv[1] == "--list":
-            list_clusters()
+            for f in sorted(DATA_FACE_DIR.iterdir()):
+                if f.is_dir() and not f.name.startswith('unknown'):
+                    print(f"  {f.name}: {len(list(f.glob('*.jpg')))} images")
             sys.exit(0)
-        elif sys.argv[1] == "--rename" and len(sys.argv) >= 4:
-            rename_cluster_folder(sys.argv[2], sys.argv[3])
+        elif sys.argv[1] == "--record" and len(sys.argv) >= 3:
+            d = FaceDetector()
+            dur = int(sys.argv[3]) if len(sys.argv) > 3 else 10
+            d.record_and_extract(sys.argv[2], dur)
+            d.force_retrain()
+            sys.exit(0)
+        elif sys.argv[1] == "--video" and len(sys.argv) >= 4:
+            d = FaceDetector()
+            d.extract_from_video(sys.argv[2], sys.argv[3])
+            d.force_retrain()
             sys.exit(0)
     
-    print("\nUsage:")
-    print("  1. Run to detect faces - similar unknowns grouped together")
-    print("  2. --list to see all folders")
-    print("  3. --rename unknown_person_X john_doe to identify a person")
+    print("\nCommands:")
+    print("  python face_model.py                    # Run detection")
+    print("  python face_model.py --list             # List persons")
+    print("  python face_model.py --record 'Name' 10 # Record 10s video")
+    print("  python face_model.py --video path 'Name'# Extract from video")
+    print("\nControls: N=new(record) A=add(photos) V=video R=retrain Q=quit")
     print("=" * 50 + "\n")
     
-    detector = FaceDetector()
-    detector.run_camera_feed()
+    FaceDetector().run()
