@@ -1,35 +1,61 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+/**
+ * Main App Component
+ * Unified Enterprise System - Attendance + Timetable
+ */
 
-function App() {
-  const [count, setCount] = useState(0)
+import React, { useState, useEffect } from 'react';
+import styled from 'styled-components';
+import { Sidebar } from './components/Sidebar';
+import { Dashboard } from './pages/Dashboard';
+import { TimetableGrid } from './pages/TimetableGrid';
+import { ResourceManagement } from './pages/ResourceManagement';
+import { AttendanceKiosk } from './pages/AttendanceKiosk';
+import { AttendanceLogs } from './pages/AttendanceLogs';
+import { useResources } from './hooks/useResources';
+import './styles/global.css';
+
+const AppContainer = styled.div`
+  display: flex;
+  min-height: 100vh;
+`;
+
+const MainContent = styled.div`
+  flex: 1;
+  margin-left: 250px;
+  overflow-y: auto;
+`;
+
+const App: React.FC = () => {
+  const [activeView, setActiveView] = useState('dashboard');
+  const { classGroups, fetchAllResources } = useResources();
+
+  useEffect(() => {
+    fetchAllResources();
+  }, [fetchAllResources]);
+
+  const renderView = () => {
+    switch (activeView) {
+      case 'dashboard':
+        return <Dashboard onNavigate={setActiveView} />;
+      case 'timetable':
+        return <TimetableGrid classGroups={classGroups} />;
+      case 'resources':
+        return <ResourceManagement />;
+      case 'attendance':
+        return <AttendanceKiosk />;
+      case 'logs':
+        return <AttendanceLogs />;
+      default:
+        return <Dashboard onNavigate={setActiveView} />;
+    }
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    <AppContainer>
+      <Sidebar activeView={activeView} onNavigate={setActiveView} />
+      <MainContent>{renderView()}</MainContent>
+    </AppContainer>
+  );
+};
 
-export default App
+export default App;
