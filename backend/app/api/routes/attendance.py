@@ -10,7 +10,7 @@ async def register(name: str = Form(...), roll_number: str = Form(...), file: Up
         raise HTTPException(400, result["message"])
     return {"message": result["message"], "student_id": result["student_id"]}
 
-@router.post("/mark_attendance")
+@router.post("/mark")
 async def mark_attendance(file: UploadFile = File(...)):
     result = ModelFactory.mark_attendance(file)
     return result

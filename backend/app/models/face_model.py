@@ -26,13 +26,18 @@ class FaceDetector:
     4. Saves unknown faces for later labeling
     """
     
-    def __init__(self, confidence_threshold: float = 70.0):
+    def __init__(self, confidence_threshold: float = 120.0):
         """
         Initialize the face detector.
         
         Args:
-            confidence_threshold: Minimum confidence to consider a match (0-100).
-                                  Lower value = stricter matching.
+            confidence_threshold: Maximum distance to consider a match (0-infinity).
+                                  Standard LBPH thresholds:
+                                  - < 50: Very strict (Identity verification)
+                                  - < 80: Moderate (Recognition)
+                                  - < 100: Loose
+                                  
+                                  We use 120.0 to be extremely permissive for singular training samples.
         """
         self.confidence_threshold = confidence_threshold
         self.known_face_labels: Dict[int, str] = {}  # label_id -> name
@@ -91,8 +96,9 @@ class FaceDetector:
                     continue
                 
                 # Detect face in image
+                # Use lenient parameters because we already validated these images during registration
                 face_rects = self.face_cascade.detectMultiScale(
-                    image, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30)
+                    image, scaleFactor=1.05, minNeighbors=3, minSize=(30, 30)
                 )
                 
                 if len(face_rects) == 0:
@@ -150,7 +156,7 @@ class FaceDetector:
             gray,
             scaleFactor=1.1,
             minNeighbors=5,
-            minSize=(60, 60)
+            minSize=(30, 30)
         )
         
         return list(faces) if len(faces) > 0 else []
@@ -164,10 +170,11 @@ class FaceDetector:
             face_rect: (x, y, w, h) tuple
             
         Returns:
-            Tuple of (name, confidence) where confidence is 0-100 (higher is better)
+            Tuple of (name, distance) where distance is lower=better.
+            If unknown, returns ("Unknown", distance_value)
         """
         if not self.is_trained:
-            return "Unknown", 0.0
+            return "Unknown", 999.0
         
         x, y, w, h = face_rect
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -176,16 +183,17 @@ class FaceDetector:
         
         try:
             label, distance = self.recognizer.predict(face_roi)
-            # Convert distance to confidence (lower distance = higher confidence)
-            confidence = max(0, 100 - distance)
             
-            if confidence >= self.confidence_threshold:
-                name = self.known_face_labels.get(label, "Unknown")
-                return name, confidence
+            print(f"[DEBUG] Recognition: Label={label}, Name={self.known_face_labels.get(label, 'Unknown')}, Distance={distance:.2f}, Threshold={self.confidence_threshold}")
+
+            # Return the raw result regardless of threshold - let caller decide
+            name = self.known_face_labels.get(label, "Unknown")
+            return name, distance
+            
         except Exception as e:
             print(f"[ERROR] Recognition failed: {e}")
         
-        return "Unknown", 0.0
+        return "Unknown", 999.0
     
     def save_unknown_face(self, frame: np.ndarray, face_rect: Tuple[int, int, int, int]) -> str:
         """
