@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import '../features/profile/ProfilePage.css';
+import './ProfilePage.css';
 
 const ProfilePage = () => {
     const navigate = useNavigate();

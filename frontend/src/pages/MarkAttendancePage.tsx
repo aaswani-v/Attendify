@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import '../features/attendance/MarkAttendancePage.css';
+import './MarkAttendancePage.css';
 
 const MarkAttendancePage = () => {
     const [mode, setMode] = useState<'camera' | 'manual'>('camera');
