@@ -3,7 +3,7 @@
  * Face recognition attendance marking
  */
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import styled from 'styled-components';
 import Webcam from 'react-webcam';
 import { GlassCard, GlassButton, GlassInput, SuccessBanner, ErrorBanner, Grid } from '../styles/glassmorphism';
@@ -47,6 +47,8 @@ export const AttendanceKiosk: React.FC = () => {
   const [name, setName] = useState('');
   const [rollNumber, setRollNumber] = useState('');
   const [capturing, setCapturing] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const webcamRef = useRef<Webcam>(null);
 
   const capture = useCallback(() => {
@@ -58,8 +60,40 @@ export const AttendanceKiosk: React.FC = () => {
       } else {
         handleAttendance(blob);
       }
+    } else {
+      setFeedback({ type: 'error', message: 'Failed to capture image. Please check camera permissions.' });
     }
   }, [mode, name, rollNumber]);
+
+  const requestCameraPermission = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      setHasPermission(true);
+      setCameraError(null);
+      // Stop the stream immediately after getting permission
+      stream.getTracks().forEach(track => track.stop());
+    } catch (error) {
+      setHasPermission(false);
+      setCameraError('Camera access denied. Please allow camera permissions and refresh the page.');
+      console.error('Camera permission error:', error);
+    }
+  }, []);
+
+  const handleUserMedia = useCallback(() => {
+    setHasPermission(true);
+    setCameraError(null);
+  }, []);
+
+  const handleUserMediaError = useCallback((error: string | DOMException) => {
+    setHasPermission(false);
+    setCameraError('Unable to access camera. Please check your camera and permissions.');
+    console.error('Camera error:', error);
+  }, []);
+
+  // Request camera permission on component mount
+  useEffect(() => {
+    requestCameraPermission();
+  }, [requestCameraPermission]);
 
   const dataURLToBlob = (dataURL: string): Blob => {
     const arr = dataURL.split(',');
@@ -178,17 +212,64 @@ export const AttendanceKiosk: React.FC = () => {
           )}
 
           <WebcamContainer>
-            <Webcam
-              audio={false}
-              ref={webcamRef}
-              screenshotFormat="image/jpeg"
-              width={480}
-              height={360}
-              style={{ borderRadius: '8px' }}
-            />
+            {cameraError ? (
+              <div style={{ 
+                padding: '20px', 
+                textAlign: 'center', 
+                color: '#ef4444',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                borderRadius: '8px',
+                marginBottom: '16px'
+              }}>
+                <p>📷 {cameraError}</p>
+                <GlassButton 
+                  onClick={requestCameraPermission}
+                  style={{ marginTop: '12px' }}
+                >
+                  🔄 Request Camera Access
+                </GlassButton>
+              </div>
+            ) : hasPermission === false ? (
+              <div style={{ 
+                padding: '20px', 
+                textAlign: 'center', 
+                color: '#f59e0b',
+                backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                borderRadius: '8px',
+                marginBottom: '16px'
+              }}>
+                <p>📷 Camera access required</p>
+                <GlassButton 
+                  onClick={requestCameraPermission}
+                  style={{ marginTop: '12px' }}
+                >
+                  🎥 Enable Camera
+                </GlassButton>
+              </div>
+            ) : (
+              <Webcam
+                audio={false}
+                ref={webcamRef}
+                screenshotFormat="image/jpeg"
+                width={480}
+                height={360}
+                style={{ borderRadius: '8px' }}
+                onUserMedia={handleUserMedia}
+                onUserMediaError={handleUserMediaError}
+                videoConstraints={{
+                  width: 480,
+                  height: 360,
+                  facingMode: "user"
+                }}
+              />
+            )}
           </WebcamContainer>
 
-          <GlassButton onClick={capture} disabled={capturing} style={{ width: '100%' }}>
+          <GlassButton 
+            onClick={capture} 
+            disabled={capturing || hasPermission === false || cameraError !== null} 
+            style={{ width: '100%' }}
+          >
             {capturing ? '⏳ Processing...' : mode === 'register' ? '📸 Capture & Register' : '✅ Capture & Mark'}
           </GlassButton>
 
@@ -211,6 +292,7 @@ export const AttendanceKiosk: React.FC = () => {
             <div style={{ opacity: 0.8, lineHeight: 1.6 }}>
               <p><strong>Registration Steps:</strong></p>
               <ol style={{ paddingLeft: '20px', marginTop: '12px' }}>
+                <li>Allow camera access when prompted</li>
                 <li>Enter student name and roll number</li>
                 <li>Position your face in the center of the camera</li>
                 <li>Ensure good lighting</li>
@@ -220,11 +302,17 @@ export const AttendanceKiosk: React.FC = () => {
               <p style={{ marginTop: '16px', color: '#fbbf24' }}>
                 ⚠️ Make sure your face is clearly visible and well-lit
               </p>
+              {cameraError && (
+                <p style={{ marginTop: '12px', color: '#ef4444' }}>
+                  🔴 Camera Error: {cameraError}
+                </p>
+              )}
             </div>
           ) : (
             <div style={{ opacity: 0.8, lineHeight: 1.6 }}>
               <p><strong>Attendance Marking:</strong></p>
               <ol style={{ paddingLeft: '20px', marginTop: '12px' }}>
+                <li>Allow camera access when prompted</li>
                 <li>Position your face in the center of the camera</li>
                 <li>Click "Capture & Mark"</li>
                 <li>System will verify your identity</li>
@@ -233,6 +321,11 @@ export const AttendanceKiosk: React.FC = () => {
               <p style={{ marginTop: '16px', color: '#60a5fa' }}>
                 💡 You must be registered before marking attendance
               </p>
+              {cameraError && (
+                <p style={{ marginTop: '12px', color: '#ef4444' }}>
+                  🔴 Camera Error: {cameraError}
+                </p>
+              )}
             </div>
           )}
         </GlassCard>
