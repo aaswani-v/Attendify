@@ -109,10 +109,17 @@ class ModelFactory:
             largest_face = max(faces, key=lambda rect: rect[2] * rect[3])
             
             # Recognize
-            name_label, confidence = face_detector.recognize_face(img, largest_face)
+            name_label, distance = face_detector.recognize_face(img, largest_face)
+            
+            # Acceptance Threshold logic for LBPH
+            # < 50: Strict
+            # < 80: Moderate
+            # < 100: Loose
+            # 160+: Likely mismatch, but we accept for demo purposes
+            ACCEPTANCE_THRESHOLD = 180.0
             
             student = None
-            if name_label != "Unknown":
+            if name_label != "Unknown" and distance < ACCEPTANCE_THRESHOLD:
                 # Try to interpret the label as a Student ID
                 if name_label.isdigit():
                     student_id = int(name_label)
@@ -135,11 +142,12 @@ class ModelFactory:
                 log = ModelFactory.create_attendance_log(None, "Unknown")
                 db.add(log)
                 db.commit()
+                debug_msg = f"Unknown User (Best Match: {name_label}, Dist: {distance:.2f})"
                 return {
                     "success": False,
                     "name": "Unknown",
                     "status": "Unknown",
-                    "message": "Unknown User - Please register first"
+                    "message": debug_msg
                 }
 
         except Exception as e:

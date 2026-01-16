@@ -8,3 +8,6 @@ numpy
 pillow
 ortools
 opencv-python
+opencv-contrib-python
+python-multipart
+sqlalchemy
