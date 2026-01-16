@@ -3,7 +3,10 @@ Timetable API Routes
 Enterprise-grade REST API endpoints for timetable management
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
+import google.generativeai as genai
+import json
+import io
 from sqlalchemy.orm import Session
 from typing import List
 from app.models.timetable import Teacher, Room, Subject, ClassGroup, TimetableEntry, teacher_subject
@@ -248,4 +251,89 @@ def get_all_resources(db: Session = Depends(get_db)):
         "subjects": db.query(Subject).count(),
         "class_groups": db.query(ClassGroup).count(),
         "timetable_entries": db.query(TimetableEntry).count()
+    }
+
+# ==================== AI-POWERED TIMETABLE PARSING ====================
+
+@router.post("/upload-raw")
+async def upload_raw_timetable(file: UploadFile = File(...)):
+    """
+    Enterprise AI: Upload a raw college timetable (Image/PDF)
+    and parse it into structured JSON using Gemini.
+    """
+    if not config.GEMINI_API_KEY:
+        raise HTTPException(500, "Gemini API Key not configured. Please add it to your .env file.")
+
+    contents = await file.read()
+    filename = file.filename
+    mime_type = file.content_type
+
+    print("\n" + "╔" + "═"*70 + "╗")
+    print(f"║ STARTING AI ANALYSIS: {filename.center(42)} ║")
+    print("╠" + "═"*70 + "╣")
+
+    try:
+        # Initialize Gemini
+        genai.configure(api_key=config.GEMINI_API_KEY)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+
+        # Detailed prompt for structured extraction
+        prompt = """
+        Analyze this timetable image/document and extract the schedule into a structured JSON format.
+        
+        Rules:
+        1. Identify 'Class/Batch', 'Subject', 'Teacher/Professor', 'Day', 'Time/Period', and 'Room'.
+        2. Organize the output as a list of entries.
+        3. If it's a grid, map the days and times correctly to each cell.
+        4. Return ONLY valid JSON.
+        
+        Example structure:
+        {
+          "college_name": "...",
+          "schedule": [
+            {
+              "day": "Monday",
+              "time": "09:00 - 10:00",
+              "subject": "Mathematics",
+              "teacher": "Dr. Smith",
+              "room": "101",
+              "class_group": "CSE-A"
+            }
+          ]
+        }
+        """
+
+        # Prepare for Gemini (Images/PDFs)
+        response = model.generate_content([
+            prompt,
+            {"mime_type": mime_type, "data": contents}
+        ])
+
+        # Clean JSON response
+        raw_text = response.text.strip()
+        if raw_text.startswith("```json"):
+            raw_text = raw_text[7:-3].strip()
+        elif raw_text.startswith("```"):
+             raw_text = raw_text[3:-3].strip()
+
+        parsed_data = json.loads(raw_text)
+
+        # Print systematic order to terminal
+        print("║ SUCCESSFULLY PARSED DATA (SYSTEMATIC JSON):")
+        print("╟" + "─"*70 + "╢")
+        print(json.dumps(parsed_data, indent=2))
+        print("╟" + "─"*70 + "╢")
+        print(f"║ Summary: Extracted {len(parsed_data.get('schedule', []))} class slots.")
+        
+    except Exception as e:
+        print(f"║ CRITICAL AI ERROR: {str(e).center(50)} ║")
+        raise HTTPException(500, f"AI Parsing failed: {str(e)}")
+    
+    finally:
+        print("╚" + "═"*70 + "╝\n")
+
+    return {
+        "status": "success",
+        "message": "AI parsing completed and written to terminal",
+        "data": parsed_data
     }
