@@ -32,14 +32,12 @@ const AuthPage = () => {
 
     const handleStudentLogin = (e: React.FormEvent) => {
         e.preventDefault();
-        console.log('Student Login:', { studentUser, studentPass });
         localStorage.setItem('userRole', 'student');
         navigate('/dashboard');
     };
 
     const handleFacultyLogin = (e: React.FormEvent) => {
         e.preventDefault();
-        console.log('Faculty Login:', { facultyUser, facultyPass });
         localStorage.setItem('userRole', 'faculty');
         navigate('/dashboard');
     };
@@ -48,7 +46,6 @@ const AuthPage = () => {
         e.preventDefault();
         // Here you would implement actual Admin Authentication
         console.log('Admin Login:', { adminUser, adminPass });
-        localStorage.setItem('userRole', 'admin');
         navigate('/dashboard'); // Proceed to dashboard (or special admin route)
     };
 
