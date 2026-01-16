@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
-import '../features/schedule/SchedulePage.css';
-import '../features/schedule/StudentSchedule.css';
+import './SchedulePage.css';
+import './StudentSchedule.css';
 
 const SchedulePage = () => {
     // In a real app, this would come from a context hook

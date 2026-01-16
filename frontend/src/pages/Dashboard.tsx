@@ -1,5 +1,5 @@
-import TeacherDashboard from '../features/dashboard/TeacherDashboard';
-import StudentDashboard from '../features/dashboard/StudentDashboard';
+import TeacherDashboard from '../components/dashboard/TeacherDashboard';
+import StudentDashboard from '../components/dashboard/StudentDashboard';
 
 const Dashboard = () => {
     // Get role from localStorage or default to student

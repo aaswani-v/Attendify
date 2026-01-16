@@ -1,4 +1,4 @@
-import '../features/students/StudentsPage.css';
+import './StudentsPage.css';
 
 const StudentsPage = () => {
     // Mock data based on image
