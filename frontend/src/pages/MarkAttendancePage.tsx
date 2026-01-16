@@ -1,8 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { attendanceService } from '../services/attendanceService';
 import { studentService } from '../services/studentService';
-import { Student } from '../types';
+import type { Student } from '../types';
 import './MarkAttendancePage.css';
+
+// Manual student type for UI state management
+interface ManualStudent extends Student {
+    status?: 'present' | 'absent' | 'not-marked';
+}
 
 const MarkAttendancePage = () => {
     const [mode, setMode] = useState<'camera' | 'manual'>('camera');
@@ -10,11 +15,10 @@ const MarkAttendancePage = () => {
     const [scanning, setScanning] = useState(false);
     const [detectedStudents, setDetectedStudents] = useState<string[]>([]);
     const [statusMessage, setStatusMessage] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
 
     // Students data for manual mode
-    const [students, setStudents] = useState<Student[]>([]);
+    const [students, setStudents] = useState<ManualStudent[]>([]);
 
     const stopCamera = () => {
         if (videoRef.current && videoRef.current.srcObject) {
@@ -40,7 +44,9 @@ const MarkAttendancePage = () => {
         const loadStudents = async () => {
             try {
                 const data = await studentService.getAll();
-                setStudents(data);
+                // Initialize with not-marked status
+                const manualData: ManualStudent[] = data.map(s => ({ ...s, status: 'not-marked' }));
+                setStudents(manualData);
             } catch (error) {
                 console.error('Failed to load students:', error);
             }
@@ -85,10 +91,20 @@ const MarkAttendancePage = () => {
 
             // Mark attendance via API
             const response = await attendanceService.markWithFace(blob, latitude, longitude);
-            setDetectedStudents([response.data.student?.name || 'Unknown']);
-            setStatusMessage(`✅ Attendance marked for ${response.data.student?.name || 'student'}`);
+            
+            if (response.success) {
+                setDetectedStudents([response.name]);
+                setStatusMessage(`✅ Attendance marked for ${response.name} (${response.confidence})`);
+            } else {
+                if (response.require_biometric) {
+                    setStatusMessage(`⚠️ Low Confidence (${response.confidence}). Please use fingerprint.`);
+                } else {
+                    setStatusMessage(`❌ Error: ${response.message}`);
+                }
+                setDetectedStudents([]);
+            }
         } catch (error: any) {
-            const errorMsg = error.response?.data?.detail || error.message || "Face detection failed";
+            const errorMsg = error.response?.data?.message || "Face detection failed";
             setStatusMessage("❌ Error: " + errorMsg);
             setDetectedStudents([]);
         } finally {
@@ -173,8 +189,8 @@ const MarkAttendancePage = () => {
                                     padding: '12px', 
                                     margin: '10px 0',
                                     borderRadius: '8px',
-                                    background: statusMessage.includes('✅') ? '#16a34a22' : '#dc262622',
-                                    color: statusMessage.includes('✅') ? '#16a34a' : '#dc2626',
+                                    background: statusMessage.includes('✅') ? '#16a34a22' : statusMessage.includes('⚠️') ? '#f59e0b22' : '#dc262622',
+                                    color: statusMessage.includes('✅') ? '#16a34a' : statusMessage.includes('⚠️') ? '#f59e0b' : '#dc2626',
                                     textAlign: 'center'
                                 }}>
                                     {statusMessage}
@@ -191,9 +207,6 @@ const MarkAttendancePage = () => {
                                             </li>
                                         ))}
                                     </ul>
-                                    <button className="btn-confirm">
-                                        <i className='bx bx-check'></i> Confirm Attendance
-                                    </button>
                                 </div>
                             )}
                         </div>
@@ -223,7 +236,7 @@ const MarkAttendancePage = () => {
                             <tbody>
                                 {students.map(student => (
                                     <tr key={student.id}>
-                                        <td>{student.rollNo}</td>
+                                        <td>{student.roll_number}</td>
                                         <td>{student.name}</td>
                                         <td>
                                             <span className={`status-badge ${student.status}`}>

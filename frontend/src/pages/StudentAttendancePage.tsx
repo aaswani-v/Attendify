@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { GlassCard, GlassButton } from '../styles/glassmorphism';
-import { API_ENDPOINTS } from '../utils/api';
+import { attendanceService } from '../services/attendanceService';
+import type { AttendanceLogEntry } from '../types';
 
 const Container = styled.div`
   padding: 32px;
@@ -24,7 +25,7 @@ const LogItem = styled(GlassCard)`
 `;
 
 const StudentAttendancePage = () => {
-    const [logs, setLogs] = useState<{id: number; timestamp: string; status: string}[]>([]);
+    const [logs, setLogs] = useState<AttendanceLogEntry[]>([]);
     const navigate = useNavigate();
     
     // Get user role
@@ -35,8 +36,7 @@ const StudentAttendancePage = () => {
     useEffect(() => {
         // ideally fetch logs for *this* student. 
         // For hackathon/demo, we'll fetch all and maybe filter client side or show all
-        fetch(API_ENDPOINTS.GET_ATTENDANCE_LOGS)
-            .then(res => res.json())
+        attendanceService.getLogs()
             .then(data => setLogs(data))
             .catch(err => console.error(err));
     }, []);
@@ -68,7 +68,7 @@ const StudentAttendancePage = () => {
             <h2>Attendance History</h2>
             <div style={{ marginTop: '16px' }}>
                 {logs.length === 0 ? <p>No records found.</p> : (
-                    logs.map((log: { id: number; timestamp: string; status: string }) => (
+                    logs.map((log) => (
                         <LogItem key={log.id}>
                             <div>
                                 <h3>{new Date(log.timestamp).toLocaleDateString()}</h3>

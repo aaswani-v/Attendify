@@ -55,11 +55,12 @@ export const API_ENDPOINTS = {
   MARK_ATTENDANCE: `${API_BASE_URL}/api/attendance/mark`,
   GET_STUDENTS: `${API_BASE_URL}/api/attendance/students`,
   GET_LOGS: `${API_BASE_URL}/api/attendance/logs`,
+  GET_ATTENDANCE_LOGS: `${API_BASE_URL}/api/attendance/logs`,
   
   // Timetable
   GET_SCHEDULE: `${API_BASE_URL}/api/timetable/schedule`,
   GENERATE_TIMETABLE: `${API_BASE_URL}/api/timetable/generate`,
-  CLEAR_SCHEDULE: `${API_BASE_URL}/api/timetable/clear`,
+  CLEAR_SCHEDULE: `${API_BASE_URL}/api/timetable/schedule`,
   
   // Resources
   GET_TEACHERS: `${API_BASE_URL}/api/timetable/teachers`,
@@ -77,4 +78,9 @@ export const API_ENDPOINTS = {
   GET_CLASS_GROUPS: `${API_BASE_URL}/api/timetable/class-groups`,
   CREATE_CLASS_GROUP: `${API_BASE_URL}/api/timetable/class-groups`,
   DELETE_CLASS_GROUP: (id: number) => `${API_BASE_URL}/api/timetable/class-groups/${id}`,
+
+  // Notices
+  GET_NOTICES: `${API_BASE_URL}/api/notices`,
+  CREATE_NOTICE: `${API_BASE_URL}/api/notices`,
+  DELETE_NOTICE: (id: number) => `${API_BASE_URL}/api/notices/${id}`,
 } as const;

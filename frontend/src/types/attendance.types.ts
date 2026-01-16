@@ -2,53 +2,27 @@
  * Attendance Types
  */
 
+export type AttendanceStatus = 'Present' | 'Absent' | 'Unknown' | 'Verify' | 'Rejected' | string;
+
 export interface Student {
-  id: string;
+  id: number;
   name: string;
-  email: string;
-  student_id: string;
-  department: string;
-  face_encoding?: string;
+  roll_number: string;
 }
 
-export interface AttendanceRecord {
-  id: string;
-  student_id: string;
-  course_id: string;
-  date: string;
-  status: 'present' | 'absent' | 'late';
-  marked_by?: string;
-  marked_at: string;
-  location?: {
-    latitude: number;
-    longitude: number;
-  };
-  recognition_confidence?: number;
-}
-
-export interface MarkAttendanceRequest {
-  student_id: string;
-  course_id: string;
-  status: 'present' | 'absent' | 'late';
-  location?: {
-    latitude: number;
-    longitude: number;
-  };
-}
-
-export interface FaceAttendanceRequest {
-  course_id: string;
-  image: string; // base64
-  location?: {
-    latitude: number;
-    longitude: number;
-  };
+export interface AttendanceLogEntry {
+  id: number;
+  student_name: string;
+  roll_number: string;
+  timestamp: string;
+  status: AttendanceStatus;
 }
 
 export interface FaceAttendanceResponse {
   success: boolean;
-  student?: Student;
-  attendance?: AttendanceRecord;
-  confidence?: number;
+  name: string;
+  status: AttendanceStatus;
+  confidence?: string;
   message: string;
+  require_biometric?: boolean;
 }
