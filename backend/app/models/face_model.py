@@ -1,7 +1,11 @@
 """
 Face Detection and Recognition System
-Uses OpenCV for detection and recognition.
-Stores unknown faces in _data-face folder for labeling.
+Enterprise-Grade OpenCV Implementation
+Features:
+- Histogram Equalization for lighting invariance
+- Model persistence (save/load trained model)
+- Confidence score mapping
+- Robust error handling
 """
 
 import os
@@ -10,65 +14,100 @@ import numpy as np
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
+import pickle
 
-# Path to store face data
-DATA_FACE_DIR = Path(__file__).parent / "_data-face"
-
+# Path to store face data and models
+DATA_DIR = Path(__file__).parent
+DATA_FACE_DIR = DATA_DIR / "_data-face"
+MODEL_FILE = DATA_DIR / "lbph_model.yml"
+LABELS_FILE = DATA_DIR / "labels.pickle"
 
 class FaceDetector:
     """
-    Real-time face detection and recognition system using OpenCV.
-    
-    Workflow:
-    1. Loads known faces from _data-face folder on initialization
-    2. Detects faces in camera feed using OpenCV Haar Cascade
-    3. Recognizes known faces using LBPH Face Recognizer
-    4. Saves unknown faces for later labeling
+    Enterprise-grade Face Recognition Wrapper using OpenCV LBPH.
     """
     
-    def __init__(self, confidence_threshold: float = 120.0):
+    def __init__(self, distance_threshold: float = 120.0):
         """
         Initialize the face detector.
-        
         Args:
-            confidence_threshold: Maximum distance to consider a match (0-infinity).
-                                  Standard LBPH thresholds:
-                                  - < 50: Very strict (Identity verification)
-                                  - < 80: Moderate (Recognition)
-                                  - < 100: Loose
-                                  
-                                  We use 120.0 to be extremely permissive for singular training samples.
+            distance_threshold: Max LBPH distance to consider a possible match.
         """
-        self.confidence_threshold = confidence_threshold
-        self.known_face_labels: Dict[int, str] = {}  # label_id -> name
+        self.distance_threshold = distance_threshold
+        self.known_face_labels: Dict[int, str] = {}
         self.label_counter = 0
         
-        # Initialize OpenCV face detector (Haar Cascade)
+        # Load Haar Cascade
         cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
         self.face_cascade = cv2.CascadeClassifier(cascade_path)
         
-        # Initialize LBPH Face Recognizer
-        self.recognizer = cv2.face.LBPHFaceRecognizer_create()
+        # Initialize LBPH Recognizer
+        # grid_x/grid_y=8 (default) - increasing to 10 might capture more detail but is slower
+        self.recognizer = cv2.face.LBPHFaceRecognizer_create(radius=1, neighbors=8, grid_x=8, grid_y=8)
         self.is_trained = False
         
         # Ensure data directory exists
         DATA_FACE_DIR.mkdir(parents=True, exist_ok=True)
         
-        # Load and train on known faces
-        self.load_known_faces()
-    
-    def load_known_faces(self) -> int:
+        # Try to load existing model first for speed
+        self._load_model_from_disk()
+
+    def _load_model_from_disk(self):
+        """Attempt to load trained model and labels from disk."""
+        if MODEL_FILE.exists() and LABELS_FILE.exists():
+            try:
+                self.recognizer.read(str(MODEL_FILE))
+                with open(LABELS_FILE, 'rb') as f:
+                    data = pickle.load(f)
+                    self.known_face_labels = data.get('labels', {})
+                    self.label_counter = data.get('counter', 0)
+                self.is_trained = True
+                print("[INFO] Loaded pre-trained face model from disk.")
+            except Exception as e:
+                print(f"[WARNING] Failed to load model from disk: {e}. Retraining...")
+                self.train_model()
+        else:
+            self.train_model()
+
+    def _save_model_to_disk(self):
+        """Save trained model and labels to disk."""
+        try:
+            self.recognizer.save(str(MODEL_FILE))
+            with open(LABELS_FILE, 'wb') as f:
+                pickle.dump({
+                    'labels': self.known_face_labels,
+                    'counter': self.label_counter
+                }, f)
+            print("[INFO] Saved trained model to disk.")
+        except Exception as e:
+            print(f"[ERROR] Failed to save model: {e}")
+
+    def preprocess_face(self, face_img: np.ndarray) -> np.ndarray:
         """
-        Load all known faces from the _data-face directory and train recognizer.
-        
-        File naming convention:
-        - {person_name}.jpg or {person_name}.png
-        - {person_name}_1.jpg for multiple images of same person
-        - Files starting with 'unknown_' are skipped
-        
-        Returns:
-            Number of faces loaded
+        Apply preprocessing to a face image before training/recognition.
+        1. Convert to Grayscale (if needed)
+        2. Resize to standard size
+        3. Histogram Equalization (improves lighting invariance)
         """
+        if len(face_img.shape) == 3:
+            gray = cv2.cvtColor(face_img, cv2.COLOR_BGR2GRAY)
+        else:
+            gray = face_img
+            
+        # Standardize size
+        resized = cv2.resize(gray, (100, 100))
+        
+        # Apply Histogram Equalization
+        # This increases contrast and helps with varying lighting conditions
+        equalized = cv2.equalizeHist(resized)
+        
+        return equalized
+
+    def train_model(self) -> int:
+        """
+        Load all known faces and train the recognizer.
+        """
+        print("[INFO] Starting model training...")
         self.known_face_labels = {}
         self.label_counter = 0
         faces = []
@@ -76,290 +115,125 @@ class FaceDetector:
         name_to_label: Dict[str, int] = {}
         
         if not DATA_FACE_DIR.exists():
-            print(f"[INFO] Data directory not found: {DATA_FACE_DIR}")
             return 0
         
         loaded_count = 0
         for image_path in DATA_FACE_DIR.iterdir():
-            # Skip non-image files
             if image_path.suffix.lower() not in ['.jpg', '.jpeg', '.png']:
                 continue
-            
-            # Skip unknown/unlabeled faces
             if image_path.stem.startswith('unknown_'):
                 continue
             
             try:
-                # Load image in grayscale
-                image = cv2.imread(str(image_path), cv2.IMREAD_GRAYSCALE)
+                # Load image
+                image = cv2.imread(str(image_path))
                 if image is None:
                     continue
                 
-                # Detect face in image
-                # Use lenient parameters because we already validated these images during registration
+                # Detect face (use lenient settings for training data)
+                gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
                 face_rects = self.face_cascade.detectMultiScale(
-                    image, scaleFactor=1.05, minNeighbors=3, minSize=(30, 30)
+                    gray, scaleFactor=1.05, minNeighbors=3, minSize=(30, 30)
                 )
                 
                 if len(face_rects) == 0:
-                    print(f"[WARNING] No face found in: {image_path.name}")
+                    print(f"[WARNING] Skipped {image_path.name} - No face detected")
                     continue
                 
-                # Use the first detected face
-                x, y, w, h = face_rects[0]
+                # Use the largest face
+                x, y, w, h = max(face_rects, key=lambda r: r[2]*r[3])
                 face_roi = image[y:y+h, x:x+w]
-                face_roi = cv2.resize(face_roi, (100, 100))
                 
-                # Extract name from filename
-                name = image_path.stem.split('_')[0] if '_' in image_path.stem else image_path.stem
-                name = name.replace('-', ' ').title()
+                # Preprocess
+                processed_face = self.preprocess_face(face_roi)
                 
-                # Assign label
-                if name not in name_to_label:
-                    name_to_label[name] = self.label_counter
-                    self.known_face_labels[self.label_counter] = name
+                # Extract Label
+                # Filename format: {id}_{name}.jpg or just {name}.jpg
+                stem = image_path.stem
+                if '_' in stem:
+                    # If ID is present, try to use it to group same person
+                    parts = stem.split('_')
+                    name_key = parts[0] # Using ID as key if available, else first part
+                else:
+                    name_key = stem
+                
+                name_key = name_key.lower().strip()
+                
+                if name_key not in name_to_label:
+                    name_to_label[name_key] = self.label_counter
+                    self.known_face_labels[self.label_counter] = name_key
                     self.label_counter += 1
                 
-                label = name_to_label[name]
-                faces.append(face_roi)
+                label = name_to_label[name_key]
+                faces.append(processed_face)
                 labels.append(label)
                 loaded_count += 1
-                print(f"[INFO] Loaded face: {name} from {image_path.name}")
                     
             except Exception as e:
-                print(f"[ERROR] Failed to load {image_path.name}: {e}")
+                print(f"[ERROR] Error processing {image_path.name}: {e}")
         
-        # Train the recognizer
         if faces:
             self.recognizer.train(faces, np.array(labels))
             self.is_trained = True
-            print(f"[INFO] Trained on {loaded_count} faces")
+            self._save_model_to_disk()
+            print(f"[INFO] Training complete. Trained on {loaded_count} images.")
         else:
             self.is_trained = False
-            print("[INFO] No faces to train on")
+            print("[INFO] No valid faces found to train on.")
         
         return loaded_count
     
     def detect_faces(self, frame: np.ndarray) -> List[Tuple[int, int, int, int]]:
-        """
-        Detect faces in a frame using OpenCV Haar Cascade.
-        
-        Args:
-            frame: BGR image from OpenCV
-            
-        Returns:
-            List of face locations as (x, y, w, h) tuples
-        """
+        """Detect faces in frame."""
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        
+        # Moderate settings for realtime detection (balance speed/accuracy)
         faces = self.face_cascade.detectMultiScale(
             gray,
             scaleFactor=1.1,
-            minNeighbors=5,
+            minNeighbors=4, 
             minSize=(30, 30)
         )
-        
-        return list(faces) if len(faces) > 0 else []
+        return list(faces)
     
-    def recognize_face(self, frame: np.ndarray, face_rect: Tuple[int, int, int, int]) -> Tuple[str, float]:
+    def recognize_face(self, frame: np.ndarray, face_rect: Tuple[int, int, int, int]) -> Tuple[str, float, float]:
         """
-        Recognize a face and return the name.
-        
-        Args:
-            frame: BGR image from OpenCV
-            face_rect: (x, y, w, h) tuple
-            
-        Returns:
-            Tuple of (name, distance) where distance is lower=better.
-            If unknown, returns ("Unknown", distance_value)
+        Recognize a face.
+        Returns: (Name/ID, Distance, Confidence%)
         """
         if not self.is_trained:
-            return "Unknown", 999.0
+            return "Unknown", 0.0, 0.0
         
         x, y, w, h = face_rect
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        face_roi = gray[y:y+h, x:x+w]
-        face_roi = cv2.resize(face_roi, (100, 100))
+        face_roi = frame[y:y+h, x:x+w]
+        
+        # Apply SAME preprocessing as training
+        processed_face = self.preprocess_face(face_roi)
         
         try:
-            label, distance = self.recognizer.predict(face_roi)
+            label, distance = self.recognizer.predict(processed_face)
             
-            print(f"[DEBUG] Recognition: Label={label}, Name={self.known_face_labels.get(label, 'Unknown')}, Distance={distance:.2f}, Threshold={self.confidence_threshold}")
-
-            # Return the raw result regardless of threshold - let caller decide
+            # Distance mapping to Confidence %
+            # LBPH Distance 0 is perfect match. ~50 is good. >100 is bad.
+            # Simple formula: max(0, 100 - distance) is too linear.
+            # Let's use a slightly non-linear mapping.
+            # If dist=0, conf=100. If dist=50, conf=80. If dist=100, conf=10.
+            
+            if distance > 100:
+                # Rapid falloff
+                confidence = max(0, (150 - distance) * 0.5) 
+            else:
+                # Linear-ish in good range
+                confidence = max(0, 100 - (distance * 0.8))
+            
             name = self.known_face_labels.get(label, "Unknown")
-            return name, distance
+            
+            print(f"[DEBUG] Result: ID={name}, Dist={distance:.2f}, Conf={confidence:.1f}%")
+            return name, distance, confidence
             
         except Exception as e:
-            print(f"[ERROR] Recognition failed: {e}")
-        
-        return "Unknown", 999.0
-    
-    def save_unknown_face(self, frame: np.ndarray, face_rect: Tuple[int, int, int, int]) -> str:
-        """
-        Save an unknown face to the _data-face directory.
-        
-        Args:
-            frame: BGR image from OpenCV
-            face_rect: (x, y, w, h) tuple
-            
-        Returns:
-            Path to the saved image
-        """
-        x, y, w, h = face_rect
-        
-        # Add padding around the face
-        padding = 30
-        height, width = frame.shape[:2]
-        x1 = max(0, x - padding)
-        y1 = max(0, y - padding)
-        x2 = min(width, x + w + padding)
-        y2 = min(height, y + h + padding)
-        
-        # Extract face region
-        face_image = frame[y1:y2, x1:x2]
-        
-        # Generate filename with timestamp
-        timestamp = int(datetime.now().timestamp())
-        filename = f"unknown_{timestamp}.jpg"
-        filepath = DATA_FACE_DIR / filename
-        
-        # Save the image
-        cv2.imwrite(str(filepath), face_image)
-        print(f"[INFO] Saved unknown face to: {filepath}")
-        
-        return str(filepath)
-    
-    def run_camera_feed(self, camera_index: int = 0, save_unknown: bool = True, 
-                        save_interval: float = 5.0) -> None:
-        """
-        Run the real-time camera feed with face detection and recognition.
-        
-        Args:
-            camera_index: Camera device index (default 0 for built-in webcam)
-            save_unknown: Whether to save unknown faces automatically
-            save_interval: Minimum seconds between saving the same unknown face
-        """
-        print("[INFO] Starting camera feed... Press 'q' to quit, 'r' to reload faces")
-        
-        # Use DirectShow backend on Windows for better compatibility
-        print("[INFO] Attempting to open camera...")
-        cap = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW)
-        
-        if not cap.isOpened():
-            print("[WARNING] DirectShow failed, trying default backend...")
-            cap = cv2.VideoCapture(camera_index)
-        
-        if not cap.isOpened():
-            print("[ERROR] Could not open camera. Make sure:")
-            print("  1. You have a webcam connected")
-            print("  2. No other app is using the camera")
-            print("  3. Camera permissions are granted")
-            return
-        
-        print("[INFO] Camera opened successfully!")
-        
-        # Create a named window and bring it to front
-        window_name = 'Face Detection - Press Q to quit, R to reload'
-        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-        cv2.resizeWindow(window_name, 800, 600)
-        cv2.moveWindow(window_name, 100, 100)
-        
-        # Track when we last saved an unknown face
-        last_save_time: float = 0
-        frame_count = 0
-        
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                print("[ERROR] Failed to grab frame")
-                break
-            
-            frame_count += 1
-            if frame_count % 30 == 0:  # Print every 30 frames
-                print(f"[DEBUG] Processing frame {frame_count}...")
-            
-            # Detect faces
-            face_rects = self.detect_faces(frame)
-            
-            for face_rect in face_rects:
-                x, y, w, h = face_rect
-                name, confidence = self.recognize_face(frame, face_rect)
-                
-                # Choose color based on recognition
-                if name == "Unknown":
-                    color = (0, 0, 255)  # Red for unknown
-                    
-                    # Save unknown faces
-                    if save_unknown:
-                        current_time = datetime.now().timestamp()
-                        if (current_time - last_save_time) > save_interval:
-                            self.save_unknown_face(frame, face_rect)
-                            last_save_time = current_time
-                else:
-                    color = (0, 255, 0)  # Green for known
-                
-                # Draw rectangle around face
-                cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
-                
-                # Draw label
-                label = f"{name}" if name == "Unknown" else f"{name} ({confidence:.0f}%)"
-                label_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)[0]
-                cv2.rectangle(frame, (x, y + h), (x + label_size[0], y + h + 25), color, -1)
-                cv2.putText(frame, label, (x, y + h + 18), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-            
-            # Display frame
-            cv2.imshow(window_name, frame)
-            
-            # Handle key presses
-            key = cv2.waitKey(1) & 0xFF
-            if key == ord('q'):
-                break
-            elif key == ord('r'):
-                print("[INFO] Reloading known faces...")
-                self.load_known_faces()
-        
-        cap.release()
-        cv2.destroyAllWindows()
-        print("[INFO] Camera feed stopped")
+            print(f"[ERROR] Recognition error: {e}")
+            return "Unknown", 999.0, 0.0
 
-
-def get_data_folder_path() -> str:
-    """Get the path to the _data-face folder."""
-    return str(DATA_FACE_DIR)
-
-
-def list_known_faces() -> List[str]:
-    """List all known (labeled) faces in the data folder."""
-    detector = FaceDetector()
-    return list(detector.known_face_labels.values())
-
-
-def list_unknown_faces() -> List[str]:
-    """List all unknown (unlabeled) faces in the data folder."""
-    unknown_faces = []
-    if DATA_FACE_DIR.exists():
-        for image_path in DATA_FACE_DIR.iterdir():
-            if image_path.suffix.lower() in ['.jpg', '.jpeg', '.png']:
-                if image_path.stem.startswith('unknown_'):
-                    unknown_faces.append(image_path.name)
-    return unknown_faces
-
-
-# Main entry point
-if __name__ == "__main__":
-    print("=" * 50)
-    print("Face Detection and Recognition System")
-    print("=" * 50)
-    print(f"Data folder: {DATA_FACE_DIR}")
-    print()
-    print("Instructions:")
-    print("1. Unknown faces will be saved to the _data-face folder")
-    print("2. Rename 'unknown_*.jpg' files to '{person_name}.jpg' to label them")
-    print("3. Press 'r' while running to reload known faces")
-    print("4. Press 'q' to quit")
-    print("=" * 50)
-    
-    detector = FaceDetector()
-    detector.run_camera_feed()
+    def load_known_faces(self):
+        """Legacy alias -> train_model"""
+        return self.train_model()

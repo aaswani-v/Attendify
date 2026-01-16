@@ -1,37 +1,33 @@
 """
 Core Model Factory
 Centralized model management and integration with FaceDetector
+Enterprise Refactor:
+- Proper Dependency Injection for DB Sessions
+- Enhanced Accuracy with Preprocessing Integration
+- Confidence Score Reporting
 """
 
 import cv2
 import numpy as np
-import io
 from typing import Optional, List
 from sqlalchemy.orm import Session
-from app.core.database import SessionLocal
 from app.models.attendance import Student, AttendanceLog
 from app.models.timetable import Teacher, Room, Subject, ClassGroup, TimetableEntry
 from app.models.face_model import FaceDetector, DATA_FACE_DIR
 
 # Initialize global FaceDetector
-# The detector loads faces from disk on init.
 face_detector = FaceDetector()
 
 class ModelFactory:
     """Centralized model factory for all database operations"""
 
     @staticmethod
-    def get_db_session():
-        """Get database session"""
-        return SessionLocal()
-
-    @staticmethod
     def create_student(name: str, roll_number: str) -> Student:
-        """Create a new student object (without encoding initially)"""
+        """Create a new student object"""
         return Student(
             name=name,
             roll_number=roll_number,
-            face_encoding=b"LBPH_FILE_BASED" # Placeholder
+            face_encoding=b"LBPH_FILE_BASED"
         )
 
     @staticmethod
@@ -40,11 +36,10 @@ class ModelFactory:
         return AttendanceLog(student_id=student_id, status=status)
 
     @staticmethod
-    def register_student(name: str, roll_number: str, image_file) -> dict:
+    def register_student(db: Session, name: str, roll_number: str, image_file) -> dict:
         """Register a new student and train face model"""
-        db = ModelFactory.get_db_session()
         try:
-            # Check if roll number already exists
+            # Check if roll number exists
             existing = db.query(Student).filter(Student.roll_number == roll_number).first()
             if existing:
                 return {"success": False, "message": "Roll number already exists"}
@@ -52,9 +47,9 @@ class ModelFactory:
             # Create student to get ID
             student = ModelFactory.create_student(name, roll_number)
             db.add(student)
-            db.flush() # distinct from commit - gets the ID
+            db.flush()
 
-            # Save image to models folder
+            # Process Image
             image_bytes = image_file.file.read()
             nparr = np.frombuffer(image_bytes, np.uint8)
             img = cv2.imdecode(nparr, cv2.IMREAD_COLOR) 
@@ -62,23 +57,23 @@ class ModelFactory:
             if img is None:
                 raise ValueError("Could not decode image")
 
-            # Validate face presence before saving
+            # Validate face presence
             faces = face_detector.detect_faces(img)
             if not faces:
-                raise ValueError("No face detected in the image - please ensure good lighting and clear view")
+                raise ValueError("No face detected - ensure good lighting")
 
-            # Naming convention: {student_id}_{name}.jpg
-            # This ensures we can recover the ID from the filename during recognition
-            # FaceDetector splits by '_' and takes the first part as the label/name
+            # Save with ID for robust labeling
             safe_name = "".join(x for x in name if x.isalnum() or x in (' ', '-', '_')).strip()
             filename = f"{student.id}_{safe_name}.jpg"
             save_path = DATA_FACE_DIR / filename
             
-            # Save image
+            # Use largest face for saving consistency
+            x, y, w, h = max(faces, key=lambda r: r[2]*r[3])
+            # Save the original image (detector handles preprocessing)
             cv2.imwrite(str(save_path), img)
             
-            # Reload/Train the detector to include the new face
-            face_detector.load_known_faces()
+            # Retrain model
+            face_detector.train_model()
             
             db.commit()
             return {"success": True, "message": "Student registered successfully", "student_id": student.id}
@@ -86,13 +81,10 @@ class ModelFactory:
         except Exception as e:
             db.rollback()
             return {"success": False, "message": str(e)}
-        finally:
-            db.close()
 
     @staticmethod
-    def mark_attendance(image_file) -> dict:
+    def mark_attendance(db: Session, image_file) -> dict:
         """Mark attendance using face recognition"""
-        db = ModelFactory.get_db_session()
         try:
             image_bytes = image_file.file.read()
             nparr = np.frombuffer(image_bytes, np.uint8)
@@ -108,24 +100,20 @@ class ModelFactory:
             # Use the largest face
             largest_face = max(faces, key=lambda rect: rect[2] * rect[3])
             
-            # Recognize
-            name_label, distance = face_detector.recognize_face(img, largest_face)
+            # Recognize with Confidence
+            name_label, distance, confidence_score = face_detector.recognize_face(img, largest_face)
             
-            # Acceptance Threshold logic for LBPH
-            # < 50: Strict
-            # < 80: Moderate
-            # < 100: Loose
-            # 160+: Likely mismatch, but we accept for demo purposes
-            ACCEPTANCE_THRESHOLD = 180.0
+            # Threshold: 
+            # We accept matches with > 15% confidence (based on our aggressive mapping)
+            # or Distance < 120 (loose LBPH)
+            ACCEPTED = (distance < 120) or (confidence_score > 15)
             
             student = None
-            if name_label != "Unknown" and distance < ACCEPTANCE_THRESHOLD:
-                # Try to interpret the label as a Student ID
+            if name_label != "Unknown" and ACCEPTED:
                 if name_label.isdigit():
                     student_id = int(name_label)
                     student = db.query(Student).filter(Student.id == student_id).first()
                 else:
-                    # Fallback: maybe it's a name?
                      student = db.query(Student).filter(Student.name == name_label).first()
 
             if student:
@@ -136,58 +124,49 @@ class ModelFactory:
                     "success": True,
                     "name": student.name,
                     "status": "Present",
+                    "confidence": f"{confidence_score:.1f}%",
                     "message": f"Welcome, {student.name}!"
                 }
             else:
                 log = ModelFactory.create_attendance_log(None, "Unknown")
                 db.add(log)
                 db.commit()
-                debug_msg = f"Unknown User (Best Match: {name_label}, Dist: {distance:.2f})"
                 return {
                     "success": False,
                     "name": "Unknown",
                     "status": "Unknown",
-                    "message": debug_msg
+                    "confidence": f"{confidence_score:.1f}%",
+                    "message": f"Unknown User (Confidence: {confidence_score:.1f}%)"
                 }
 
         except Exception as e:
             db.rollback()
             return {"success": False, "message": f"Error: {str(e)}"}
-        finally:
-            db.close()
 
     @staticmethod
-    def get_students() -> List[dict]:
+    def get_students(db: Session) -> List[dict]:
         """Get all registered students"""
-        db = ModelFactory.get_db_session()
-        try:
-            students = db.query(Student).all()
-            return [{
-                "id": s.id,
-                "name": s.name,
-                "roll_number": s.roll_number
-            } for s in students]
-        finally:
-            db.close()
+        students = db.query(Student).all()
+        return [{
+            "id": s.id,
+            "name": s.name,
+            "roll_number": s.roll_number
+        } for s in students]
 
     @staticmethod
-    def get_attendance_logs() -> List[dict]:
+    def get_attendance_logs(db: Session) -> List[dict]:
         """Get all attendance logs"""
-        db = ModelFactory.get_db_session()
-        try:
-            logs = db.query(AttendanceLog).join(Student, AttendanceLog.student_id == Student.id, isouter=True).order_by(AttendanceLog.timestamp.desc()).all()
-            result = []
-            for log in logs:
-                result.append({
-                    "id": log.id,
-                    "student_name": log.student.name if log.student else "Unknown",
-                    "roll_number": log.student.roll_number if log.student else "-",
-                    "timestamp": log.timestamp.isoformat(),
-                    "status": log.status
-                })
-            return result
-        finally:
-            db.close()
+        logs = db.query(AttendanceLog).join(Student, AttendanceLog.student_id == Student.id, isouter=True).order_by(AttendanceLog.timestamp.desc()).all()
+        result = []
+        for log in logs:
+            result.append({
+                "id": log.id,
+                "student_name": log.student.name if log.student else "Unknown",
+                "roll_number": log.student.roll_number if log.student else "-",
+                "timestamp": log.timestamp.isoformat(),
+                "status": log.status
+            })
+        return result
 
 # Export all models and factory
 __all__ = [
