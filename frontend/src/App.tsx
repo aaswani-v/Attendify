@@ -11,6 +11,7 @@ import PostNoticesPage from './features/notices/PostNoticesPage';
 import ReportsPage from './features/reports/ReportsPage';
 import AnalyticsDashboard from './features/analytics/AnalyticsDashboard';
 import ProfilePage from './features/profile/ProfilePage';
+import StudentsPage from './features/students/StudentsPage';
 import './App.css';
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
             <Route path="schedule" element={<SchedulePage />} />
             <Route path="attendance" element={<StudentAttendancePage />} />
             <Route path="mark-attendance" element={<MarkAttendancePage />} />
+            <Route path="students" element={<StudentsPage />} />
             <Route path="notices" element={<PostNoticesPage />} />
             <Route path="reports" element={<ReportsPage />} />
             <Route path="analytics" element={<AnalyticsDashboard />} />
