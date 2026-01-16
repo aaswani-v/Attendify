@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import './BottomNav.css';
 
 interface BottomNavProps {
-    role: 'student' | 'faculty';
+    role: 'student' | 'faculty' | 'admin';
 }
 
 const BottomNav: React.FC<BottomNavProps> = ({ role }) => {

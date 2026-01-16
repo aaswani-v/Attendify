@@ -45,7 +45,7 @@ export const useResources = () => {
   }, []);
 
   // Teacher operations
-  const createTeacher = useCallback(async (data: any) => {
+  const createTeacher = useCallback(async (data: Record<string, unknown>) => {
     const response = await fetch(API_ENDPOINTS.CREATE_TEACHER, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -63,7 +63,7 @@ export const useResources = () => {
   }, [fetchAllResources]);
 
   // Room operations
-  const createRoom = useCallback(async (data: any) => {
+  const createRoom = useCallback(async (data: Record<string, unknown>) => {
     const response = await fetch(API_ENDPOINTS.CREATE_ROOM, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -81,7 +81,7 @@ export const useResources = () => {
   }, [fetchAllResources]);
 
   // Subject operations
-  const createSubject = useCallback(async (data: any) => {
+  const createSubject = useCallback(async (data: Record<string, unknown>) => {
     const response = await fetch(API_ENDPOINTS.CREATE_SUBJECT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -99,7 +99,7 @@ export const useResources = () => {
   }, [fetchAllResources]);
 
   // ClassGroup operations
-  const createClassGroup = useCallback(async (data: any) => {
+  const createClassGroup = useCallback(async (data: Record<string, unknown>) => {
     const response = await fetch(API_ENDPOINTS.CREATE_CLASS_GROUP, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import './Auth.css';
+import '../features/auth/Auth.css';
 
 const AuthPage = () => {
     // True = "Right Panel Active" = Faculty Login

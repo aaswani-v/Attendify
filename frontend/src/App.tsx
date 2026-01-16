@@ -1,18 +1,18 @@
 import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import AuthPage from './features/auth/AuthPage';
+import AuthPage from './pages/AuthPage';
 import SplashScreen from './components/SplashScreen';
 import Layout from './components/layout/Layout';
-import Dashboard from './features/dashboard/Dashboard';
-import SchedulePage from './features/schedule/SchedulePage';
-import StudentAttendancePage from './features/attendance/StudentAttendancePage';
-import MarkAttendancePage from './features/attendance/MarkAttendancePage';
-import RegisterPage from './features/attendance/RegisterPage';
-import PostNoticesPage from './features/notices/PostNoticesPage';
-import ReportsPage from './features/reports/ReportsPage';
-import AnalyticsDashboard from './features/analytics/AnalyticsDashboard';
-import ProfilePage from './features/profile/ProfilePage';
-import StudentsPage from './features/students/StudentsPage';
+import Dashboard from './pages/Dashboard';
+import SchedulePage from './pages/SchedulePage';
+import StudentAttendancePage from './pages/StudentAttendancePage';
+import MarkAttendancePage from './pages/MarkAttendancePage';
+import RegisterPage from './pages/RegisterPage';
+import PostNoticesPage from './pages/PostNoticesPage';
+import ReportsPage from './pages/ReportsPage';
+import AnalyticsDashboard from './pages/AnalyticsDashboard';
+import ProfilePage from './pages/ProfilePage';
+import StudentsPage from './pages/StudentsPage';
 import './App.css';
 
 function App() {

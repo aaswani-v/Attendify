@@ -1,20 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import './ProfilePage.css';
+import '../features/profile/ProfilePage.css';
 
 const ProfilePage = () => {
     const navigate = useNavigate();
     // In a real app, you'd get the role and user data from context
     const role = 'student';
 
-    const [isDarkMode, setIsDarkMode] = useState(false);
-
-    useEffect(() => {
-        // Check if dark mode is already active
-        if (document.body.classList.contains('dark-mode')) {
-            setIsDarkMode(true);
-        }
-    }, []);
+    const [isDarkMode, setIsDarkMode] = useState(() => document.body.classList.contains('dark-mode'));
 
     const toggleTheme = () => {
         document.body.classList.toggle('dark-mode');
