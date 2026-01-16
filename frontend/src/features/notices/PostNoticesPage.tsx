@@ -1,9 +1,145 @@
+import React, { useState, useEffect } from 'react';
+import styled from 'styled-components';
+import { GlassCard, GlassButton, GlassInput, Grid } from '../../styles/glassmorphism';
+import { API_ENDPOINTS } from '../../utils/api';
+
+const Container = styled.div`
+  padding: 32px;
+`;
+
+const NoticeList = styled.div`
+  margin-top: 32px;
+`;
+
+const NoticeCard = styled(GlassCard)`
+  padding: 20px;
+  margin-bottom: 16px;
+  position: relative;
+  
+  h3 { margin-bottom: 8px; }
+  p { opacity: 0.8; font-size: 14px; margin-bottom: 12px; }
+  span { font-size: 12px; opacity: 0.6; }
+`;
+
+interface Notice {
+    id: number;
+    title: string;
+    content: string;
+    date: string;
+    author: string;
+}
+
 const PostNoticesPage = () => {
+    const [title, setTitle] = useState('');
+    const [content, setContent] = useState('');
+    const [notices, setNotices] = useState<Notice[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        fetchNotices();
+    }, []);
+
+    const fetchNotices = async () => {
+        try {
+            const res = await fetch(API_ENDPOINTS.GET_NOTICES);
+            if (res.ok) {
+                const data = await res.json();
+                setNotices(data);
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            const res = await fetch(API_ENDPOINTS.CREATE_NOTICE, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, content, author: 'Faculty' })
+            });
+            if (res.ok) {
+                setTitle('');
+                setContent('');
+                fetchNotices();
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDelete = async (id: number) => {
+        if(!confirm('Delete this notice?')) return;
+        try {
+            const res = await fetch(API_ENDPOINTS.DELETE_NOTICE(id), { method: 'DELETE' });
+            if (res.ok) fetchNotices();
+        } catch(error) { console.error(error); }
+    }
+
     return (
-        <div>
-            <h1>Post Notices</h1>
-            <p>Create new announcements for students.</p>
-        </div>
+        <Container>
+            <h1>📢 Post Notices Interface</h1>
+            
+            <GlassCard>
+                <form onSubmit={handleSubmit}>
+                    <div style={{ marginBottom: '16px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px' }}>Title</label>
+                        <GlassInput 
+                            value={title} 
+                            onChange={e => setTitle(e.target.value)} 
+                            placeholder="Notice Title" 
+                            required
+                        />
+                    </div>
+                    <div style={{ marginBottom: '16px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px' }}>Message</label>
+                        <textarea 
+                            value={content} 
+                            onChange={e => setContent(e.target.value)} 
+                            placeholder="Write notice content here..." 
+                            required
+                            style={{ 
+                                width: '100%', 
+                                padding: '12px', 
+                                background: 'rgba(255,255,255,0.1)', 
+                                border: '1px solid rgba(255,255,255,0.2)', 
+                                borderRadius: '8px',
+                                color: 'inherit',
+                                minHeight: '100px'
+                            }}
+                        />
+                    </div>
+                    <GlassButton disabled={loading}>
+                        {loading ? 'Posting...' : '🚀 Post Notice'}
+                    </GlassButton>
+                </form>
+            </GlassCard>
+
+            <NoticeList>
+                <h2>Recent Notices</h2>
+                {notices.length === 0 ? <p style={{opacity:0.6}}>No notices posted yet.</p> : (
+                    notices.map(notice => (
+                        <NoticeCard key={notice.id}>
+                            <h3>{notice.title}</h3>
+                            <p>{notice.content}</p>
+                            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                                <span>Posted by {notice.author} on {new Date(notice.date).toLocaleDateString()}</span>
+                                <button 
+                                    onClick={() => handleDelete(notice.id)}
+                                    style={{background:'transparent', border:'none', color:'#ff6b6b', cursor:'pointer'}}
+                                >
+                                    🗑️ Delete
+                                </button>
+                            </div>
+                        </NoticeCard>
+                    ))
+                )}
+            </NoticeList>
+        </Container>
     );
 };
 

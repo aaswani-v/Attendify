@@ -14,12 +14,27 @@ from sqlalchemy.orm import Session
 from app.models.attendance import Student, AttendanceLog
 from app.models.timetable import Teacher, Room, Subject, ClassGroup, TimetableEntry
 from app.models.face_model import FaceDetector, DATA_FACE_DIR
+from geopy.distance import geodesic
+from app.core.config import Config
 
 # Initialize global FaceDetector
 face_detector = FaceDetector()
 
 class ModelFactory:
     """Centralized model factory for all database operations"""
+
+    @staticmethod
+    def is_within_geofence(user_lat: float, user_lon: float) -> bool:
+        """Check if user is within the college geofence"""
+        # If no coordinates provided (0,0), assume bypassed or not available (strict mode would return False)
+        if user_lat == 0 and user_lon == 0:
+            return True 
+            
+        college_coords = (Config.COLLEGE_LATITUDE, Config.COLLEGE_LONGITUDE)
+        user_coords = (user_lat, user_lon)
+        
+        distance = geodesic(college_coords, user_coords).meters
+        return distance <= Config.GEOFENCE_RADIUS_METERS
 
     @staticmethod
     def create_student(name: str, roll_number: str) -> Student:
@@ -36,16 +51,28 @@ class ModelFactory:
         return AttendanceLog(student_id=student_id, status=status)
 
     @staticmethod
-    def register_student(db: Session, name: str, roll_number: str, image_file) -> dict:
-        """Register a new student and train face model"""
+    def register_student(db: Session, name: str, roll_number: str, image_file, fingerprint_file=None) -> dict:
+        """Register a new student with Face & Biometric data"""
         try:
             # Check if roll number exists
+            # ... (existing check)
             existing = db.query(Student).filter(Student.roll_number == roll_number).first()
             if existing:
                 return {"success": False, "message": "Roll number already exists"}
 
-            # Create student to get ID
-            student = ModelFactory.create_student(name, roll_number)
+            # Create student object
+            student = Student(
+                name=name,
+                roll_number=roll_number,
+                face_encoding=b"LBPH_FILE_BASED"
+            )
+            
+            # Save fingerprint if provided
+            if fingerprint_file:
+                fp_bytes = fingerprint_file.file.read()
+                if len(fp_bytes) > 0:
+                    student.fingerprint_template = fp_bytes
+            
             db.add(student)
             db.flush()
 
@@ -83,9 +110,45 @@ class ModelFactory:
             return {"success": False, "message": str(e)}
 
     @staticmethod
-    def mark_attendance(db: Session, image_file) -> dict:
-        """Mark attendance using face recognition"""
+    def mark_attendance(db: Session, image_file=None, fingerprint_file=None, latitude: float = 0.0, longitude: float = 0.0) -> dict:
+        """
+        Mark attendance using Face Recognition OR Fingerprint
+        Fallback logic: If Face Confidence < 60, prompt for Fingerprint.
+        """
         try:
+            # 1. Geofence Check
+            if not ModelFactory.is_within_geofence(latitude, longitude):
+                return {
+                    "success": False,
+                    "name": "Unknown",
+                    "status": "Rejected",
+                    "message": "Geofence Violation: You are outside the allowed campus area."
+                }
+            
+            # 2. Fingerprint Check (Priority if provided)
+            if fingerprint_file:
+                fp_bytes = fingerprint_file.file.read()
+                # Simple 1:N Exact Match (Simulation)
+                # In real scenario: Use SourceAFIS or libfprint
+                candidates = db.query(Student).filter(Student.fingerprint_template.isnot(None)).all()
+                for student in candidates:
+                    if student.fingerprint_template == fp_bytes:
+                        log = ModelFactory.create_attendance_log(student.id, "Present")
+                        db.add(log)
+                        db.commit()
+                        return {
+                            "success": True,
+                            "name": student.name,
+                            "status": "Present",
+                            "confidence": "100.0% (Biometric)",
+                            "message": f"Verified by Fingerprint: Welcome {student.name}!"
+                        }
+                return {"success": False, "message": "Fingerprint not recognized"}
+
+            # 3. Face Recognition
+            if not image_file:
+                return {"success": False, "message": "No face image provided"}
+
             image_bytes = image_file.file.read()
             nparr = np.frombuffer(image_bytes, np.uint8)
             img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -103,41 +166,49 @@ class ModelFactory:
             # Recognize with Confidence
             name_label, distance, confidence_score = face_detector.recognize_face(img, largest_face)
             
-            # Threshold: 
-            # We accept matches with > 15% confidence (based on our aggressive mapping)
-            # or Distance < 120 (loose LBPH)
-            ACCEPTED = (distance < 120) or (confidence_score > 15)
+            # Logic: If Confidence < 60%, require Biometric (Fingerprint)
+            # confidence_score is already 0-100 logic (calculated in face_model.py)
+            is_low_confidence = confidence_score < 60
             
-            student = None
+            # Match Logic
+            ACCEPTED = (distance < 120) or (confidence_score > 15) # Keep loose backend match, but enforce strict check for frontend
+            
             if name_label != "Unknown" and ACCEPTED:
+                if is_low_confidence:
+                    return {
+                        "success": False,
+                        "require_biometric": True,
+                        "name": "Uncertain",
+                        "status": "Verify",
+                        "confidence": f"{confidence_score:.1f}%",
+                        "message": f"Low Confidence ({confidence_score:.1f}%). Please use Fingerprint."
+                    }
+
                 if name_label.isdigit():
                     student_id = int(name_label)
                     student = db.query(Student).filter(Student.id == student_id).first()
                 else:
                      student = db.query(Student).filter(Student.name == name_label).first()
 
-            if student:
-                log = ModelFactory.create_attendance_log(student.id, "Present")
-                db.add(log)
-                db.commit()
-                return {
-                    "success": True,
-                    "name": student.name,
-                    "status": "Present",
-                    "confidence": f"{confidence_score:.1f}%",
-                    "message": f"Welcome, {student.name}!"
-                }
-            else:
-                log = ModelFactory.create_attendance_log(None, "Unknown")
-                db.add(log)
-                db.commit()
-                return {
-                    "success": False,
-                    "name": "Unknown",
-                    "status": "Unknown",
-                    "confidence": f"{confidence_score:.1f}%",
-                    "message": f"Unknown User (Confidence: {confidence_score:.1f}%)"
-                }
+                if student:
+                    log = ModelFactory.create_attendance_log(student.id, "Present")
+                    db.add(log)
+                    db.commit()
+                    return {
+                        "success": True,
+                        "name": student.name,
+                        "status": "Present",
+                        "confidence": f"{confidence_score:.1f}%",
+                        "message": f"Welcome, {student.name}!"
+                    }
+            
+            return {
+                "success": False,
+                "name": "Unknown",
+                "status": "Unknown",
+                "confidence": f"{confidence_score:.1f}%",
+                "message": f"Unknown User (Confidence: {confidence_score:.1f}%)"
+            }
 
         except Exception as e:
             db.rollback()

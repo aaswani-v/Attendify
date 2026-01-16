@@ -10,19 +10,27 @@ async def register(
     name: str = Form(...), 
     roll_number: str = Form(...), 
     file: UploadFile = File(...),
+    fingerprint: UploadFile = File(None), # Optional fingerprint upload
     db: Session = Depends(get_db)
 ):
-    result = ModelFactory.register_student(db, name, roll_number, file)
+    result = ModelFactory.register_student(db, name, roll_number, file, fingerprint)
     if not result["success"]:
         raise HTTPException(400, result["message"])
     return {"message": result["message"], "student_id": result.get("student_id")}
 
 @router.post("/mark")
 async def mark_attendance(
-    file: UploadFile = File(...),
+    file: UploadFile = File(None),
+    fingerprint: UploadFile = File(None),
+    latitude: float = Form(0.0),
+    longitude: float = Form(0.0),
     db: Session = Depends(get_db)
 ):
-    result = ModelFactory.mark_attendance(db, file)
+    # Ensure at least one biometric is provided
+    if not file and not fingerprint:
+        raise HTTPException(400, "Either face image or fingerprint must be provided")
+
+    result = ModelFactory.mark_attendance(db, file, fingerprint, latitude, longitude)
     return result
 
 @router.get("/logs")
