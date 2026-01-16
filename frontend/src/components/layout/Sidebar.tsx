@@ -61,6 +61,20 @@ const Sidebar: React.FC<SidebarProps> = ({ role }) => {
                             </li>
                         </>
                     )}
+                    {role === 'admin' && (
+                        <>
+                            <li>
+                                <NavLink to="/dashboard/manage-courses" className={({ isActive }) => isActive ? 'active' : ''}>
+                                    <i className='bx bx-book'></i> Courses
+                                </NavLink>
+                            </li>
+                            <li>
+                                <NavLink to="/dashboard/manage-users" className={({ isActive }) => isActive ? 'active' : ''}>
+                                    <i className='bx bx-user-plus'></i> Users
+                                </NavLink>
+                            </li>
+                        </>
+                    )}
                     <li>
                         <NavLink to="/dashboard/profile" className={({ isActive }) => isActive ? 'active' : ''}>
                             <i className='bx bx-user'></i> Profile

@@ -13,6 +13,8 @@ import ReportsPage from './pages/ReportsPage';
 import AnalyticsDashboard from './pages/AnalyticsDashboard';
 import ProfilePage from './pages/ProfilePage';
 import StudentsPage from './pages/StudentsPage';
+import ManageCoursesPage from './pages/ManageCoursesPage';
+import ManageUsersPage from './pages/ManageUsersPage';
 import './App.css';
 
 function App() {
@@ -38,6 +40,8 @@ function App() {
             <Route path="reports" element={<ReportsPage />} />
             <Route path="analytics" element={<AnalyticsDashboard />} />
             <Route path="profile" element={<ProfilePage />} />
+            <Route path="manage-courses" element={<ManageCoursesPage />} />
+            <Route path="manage-users" element={<ManageUsersPage />} />
           </Route>
 
         </Routes>
