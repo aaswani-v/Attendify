@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom';
-import Sidebar from './Sidebar';
+import BottomNav from './BottomNav';
 import './Layout.css';
 
 const Layout = () => {
@@ -8,19 +8,12 @@ const Layout = () => {
 
     return (
         <div className="dashboard-layout">
-            <Sidebar role={role} />
             <main className="dashboard-content">
-                <header className="topbar">
-                    <h3>Dashboard</h3>
-                    <div className="user-info">
-                        <span>User Name</span>
-                        <div className="avatar">U</div>
-                    </div>
-                </header>
                 <div className="content-area">
                     <Outlet />
                 </div>
             </main>
+            <BottomNav role={role} />
         </div>
     );
 };
