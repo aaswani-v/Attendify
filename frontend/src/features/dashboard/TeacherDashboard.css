@@ -1,45 +1,73 @@
 .teacher-dashboard {
     /* Counteract the padding from the main Layout to create full-width look */
-    margin: -30px;
-    background-color: #fcebeb00;
-    /* Transparent or match bg */
-    min-height: calc(100vh - 60px);
-    /* Adjust based on topbar */
+    margin: -20px;
+    background-color: transparent;
+    min-height: 100vh;
     font-family: 'Poppins', sans-serif;
 }
 
 /* Curved Header Section */
+/* Curved Header Section with Slide Down Animation */
+/* Curved Header Section with Slide Down Animation */
 .td-header {
-    background-color: #3B753D;
-    /* Green Theme */
+    background-color: rgba(59, 117, 61, 0.95);
+    /* Slightly transparent green */
     border-bottom-left-radius: 40px;
     border-bottom-right-radius: 40px;
-    padding: 30px 20px 60px 20px;
-    /* Extra bottom padding for overlap */
+    padding: 20px 30px;
     color: #fff;
-    position: relative;
+    position: fixed;
+    /* Fixed at top */
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
     box-shadow: 0 4px 15px rgba(59, 117, 61, 0.3);
+    height: 120px;
+    /* Fixed height to ensure sliding works predictably */
+
+    /* Animation State: Retracted */
+    transform: translateY(-90px);
+    /* Hide top 90px (visible 30px) */
+    transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+    /* Trigger Area */
+    cursor: pointer;
 }
 
+/* Slide down on hover */
+.td-header:hover {
+    transform: translateY(0);
+}
+
+/* App Name - Always visible at bottom left */
 .td-top-row {
+    position: absolute;
+    bottom: 10px;
+    left: 30px;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    z-index: 2;
 }
 
 .td-app-name {
-    font-weight: 600;
+    font-weight: 700;
     font-size: 1.2rem;
     display: flex;
     align-items: center;
     gap: 10px;
 }
 
+/* Profile Section - Visible only when expanded (Top Right) */
 .td-profile {
+    position: absolute;
+    top: 20px;
+    right: 30px;
     display: flex;
     align-items: center;
     gap: 15px;
+
+    /* Optional: Fade in/out logic if needed, but sliding off-screen is enough */
 }
 
 .td-avatar {
@@ -72,70 +100,283 @@
     display: inline-block;
 }
 
-/* Grid Layout */
-.td-grid-container {
-    padding: 0 20px 40px 20px;
-    margin-top: -30px;
-    /* Pull up to overlap header */
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 20px;
-    max-width: 1000px;
+/* Main Content Area */
+.td-main-content {
+    background-color: transparent;
+    border-radius: 40px 40px 0 0;
+    margin-top: 100px;
+    /* Space for the "hidden" header trigger + aesthetic spacing */
+    padding: 0 20px 120px 20px;
+    /* Bottom padding for nav */
+    max-width: 1200px;
     margin-left: auto;
     margin-right: auto;
+    width: 100%;
 }
 
-.td-card {
+/* Stats Row */
+.stats-row {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 25px;
+}
+
+.stat-card {
     background: #fff;
-    border-radius: 20px;
     padding: 20px;
+    border-radius: 16px;
+    flex: 1;
+    min-width: 200px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.stat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    color: #64748b;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.stat-header i {
+    font-size: 1.2rem;
+}
+
+.stat-header i.success {
+    color: #22c55e;
+}
+
+.stat-header i.error {
+    color: #ef4444;
+}
+
+.stat-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 5px;
+}
+
+.stat-sub {
+    font-size: 0.8rem;
+    color: #94a3b8;
+}
+
+/* Chart Section */
+.chart-section {
+    background: #fff;
+    padding: 25px;
+    border-radius: 16px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.chart-header {
+    margin-bottom: 30px;
+}
+
+.chart-header h3 {
+    margin: 0 0 5px 0;
+    color: #1e293b;
+    font-size: 1.1rem;
+}
+
+.chart-header span {
+    color: #94a3b8;
+    font-size: 0.9rem;
+}
+
+.chart-container {
+    display: flex;
+    gap: 10px;
+    height: 300px;
+    position: relative;
+}
+
+.y-axis {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    cursor: pointer;
-    min-height: 160px;
+    justify-content: space-between;
+    padding-bottom: 30px;
+    /* Space for x labels */
+    color: #94a3b8;
+    font-size: 0.8rem;
+    min-width: 30px;
 }
 
-.td-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
-}
-
-.td-icon-con {
-    width: 60px;
-    height: 60px;
-    background-color: #f0f7f1;
-    /* Very light green */
-    border-radius: 50%;
+.bars-container {
+    flex: 1;
     display: flex;
+    align-items: flex-end;
+    justify-content: space-around;
+    position: relative;
+    padding-bottom: 30px;
+    border-bottom: 1px solid #e2e8f0;
+    border-left: 1px dashed #e2e8f0;
+}
+
+.grid-lines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 30px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.grid-lines .line {
+    width: 100%;
+    height: 1px;
+    background: #f1f5f9;
+    border-top: 1px dashed #e2e8f0;
+}
+
+.bar-group {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
     align-items: center;
-    justify-content: center;
-    margin-bottom: 15px;
-    transition: background-color 0.3s ease;
+    position: relative;
+    z-index: 1;
+    width: 40px;
 }
 
-.td-card:hover .td-icon-con {
-    background-color: #e0efe2;
+.bars-wrapper {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    /* Space between present/absent bars */
 }
 
-.td-icon-con i {
-    font-size: 28px;
-    color: #3B753D;
+.bar {
+    width: 100%;
+    border-radius: 4px 4px 0 0;
+    transition: height 0.3s ease;
 }
 
-.td-card h3 {
-    font-size: 1rem;
-    color: #333;
-    font-weight: 500;
-    margin: 0;
+.bar.present {
+    background-color: #22c55e;
 }
 
-@media (max-width: 768px) {
-    .td-grid-container {
-        grid-template-columns: 1fr 1fr;
-    }
+.bar.absent {
+    background-color: #ef4444;
+}
+
+.day-label {
+    position: absolute;
+    bottom: -25px;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.chart-tooltip {
+    position: absolute;
+    bottom: 50%;
+    left: 100%;
+    transform: translateX(-50%);
+    background: #fff;
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e2e8f0;
+    min-width: 100px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 10;
+}
+
+.bar-group:hover .chart-tooltip {
+    opacity: 1;
+}
+
+.bar-group:hover .bar {
+    opacity: 0.8;
+}
+
+/* Tooltip alignment fix */
+.bar-group:nth-last-child(-n+2) .chart-tooltip {
+    left: auto;
+    right: 0;
+    transform: none;
+}
+
+.tooltip-item {
+    font-size: 0.85rem;
+    margin: 2px 0;
+}
+
+.tooltip-item.present {
+    color: #22c55e;
+}
+
+.tooltip-item.absent {
+    color: #ef4444;
+}
+
+/* Dark Mode Styles */
+body.dark-mode .teacher-dashboard .stat-card {
+    background: var(--bg-card, #1e293b);
+    border-color: var(--border-color, #334155);
+}
+
+body.dark-mode .teacher-dashboard .stat-header {
+    color: var(--text-secondary, #94a3b8);
+}
+
+body.dark-mode .teacher-dashboard .stat-value {
+    color: var(--text-primary, #f1f5f9);
+}
+
+body.dark-mode .teacher-dashboard .stat-sub {
+    color: var(--text-muted, #64748b);
+}
+
+body.dark-mode .teacher-dashboard .chart-section {
+    background: var(--bg-card, #1e293b);
+    border-color: var(--border-color, #334155);
+}
+
+body.dark-mode .teacher-dashboard .chart-header h3 {
+    color: var(--text-primary, #f1f5f9);
+}
+
+body.dark-mode .teacher-dashboard .chart-header span {
+    color: var(--text-secondary, #94a3b8);
+}
+
+body.dark-mode .teacher-dashboard .y-axis span {
+    color: var(--text-muted, #64748b);
+}
+
+body.dark-mode .teacher-dashboard .bars-container {
+    border-color: var(--border-color, #334155);
+}
+
+body.dark-mode .teacher-dashboard .line {
+    border-color: var(--border-light, #475569);
+}
+
+body.dark-mode .teacher-dashboard .day-label {
+    color: var(--text-secondary, #94a3b8);
+}
+
+body.dark-mode .teacher-dashboard .chart-tooltip {
+    background: var(--bg-card, #1e293b);
+    border-color: var(--border-color, #334155);
+}
+
+body.dark-mode .teacher-dashboard .chart-tooltip h4 {
+    color: var(--text-primary, #f1f5f9);
 }

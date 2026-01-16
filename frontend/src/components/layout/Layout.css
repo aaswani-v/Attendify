@@ -1,46 +1,30 @@
 .dashboard-layout {
     display: flex;
+    flex-direction: column;
     width: 100vw;
     height: 100vh;
     overflow: hidden;
+    background-color: #f5f7fa;
+    /* Light background for the whole app */
 }
 
 .dashboard-content {
     flex: 1;
     display: flex;
     flex-direction: column;
-    background-color: #fff;
     overflow-y: auto;
-}
-
-.topbar {
-    height: 60px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 30px;
-    border-bottom: 1px solid #eee;
-}
-
-.user-info {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.avatar {
-    width: 35px;
-    height: 35px;
-    border-radius: 50%;
-    background-color: #3B753D;
-    color: #fff;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-weight: bold;
+    position: relative;
 }
 
 .content-area {
-    padding: 30px;
+    padding: 20px;
+    padding-bottom: 100px;
+    /* Space for bottom nav */
     flex: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
 }
+
+/* Remove old sidebar/topbar styles if they interfere,
+   but keeping the classes clean is better. */

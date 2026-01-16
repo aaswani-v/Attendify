@@ -1,0 +1,105 @@
+.bottom-nav-container {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    width: auto;
+    max-width: 90%;
+}
+
+.bottom-nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.15);
+    /* Slightly clearer */
+    backdrop-filter: blur(25px);
+    /* Increased blur */
+    -webkit-backdrop-filter: blur(25px);
+    border-radius: 50px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    /* Softer, deeper shadow */
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    /* Distinct border */
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 30px;
+    color: #1e293b;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.nav-item i {
+    font-size: 1.25rem;
+}
+
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.5);
+    transform: translateY(-2px);
+}
+
+.nav-item.active {
+    background-color: #22c55e;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+    font-weight: 600;
+}
+
+.nav-divider {
+    width: 1px;
+    height: 24px;
+    background-color: rgba(0, 0, 0, 0.1);
+    margin: 0 10px;
+}
+
+.nav-item.profile-item {
+    padding-right: 4px;
+    /* Adjust for avatar on right */
+    gap: 10px;
+}
+
+.nav-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #ffffff;
+}
+
+.nav-profile-name {
+    display: none;
+    /* Hide name on smaller screens or default */
+}
+
+@media (min-width: 768px) {
+    .nav-profile-name {
+        display: block;
+        font-size: 0.9rem;
+    }
+}
+
+/* Dark mode support if needed (optional) */
+@media (prefers-color-scheme: dark) {
+    /* .bottom-nav {
+        background: rgba(30, 41, 59, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .nav-item {
+        color: #e2e8f0;
+    }
+    .nav-item.active {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: #fff;
+    } */
+}
