@@ -187,6 +187,95 @@ const StudentMarkAttendance = () => {
                     </div>
                 </div>
 
+                {/* Active Verification Area (Scanner) - Moved here */}
+                {selectedMethod && (
+                    <div className="verification-section">
+                        {selectedMethod === 'fingerprint' && (
+                            <div
+                                className="scanner-container"
+                                onClick={status === 'idle' ? simulateVerification : undefined}
+                                style={{ cursor: status === 'idle' ? 'pointer' : 'default' }}
+                            >
+                                <div className={`fingerprint-scanner ${status === 'verifying' ? 'scanning' : ''} ${status === 'success' ? 'success' : ''}`}>
+                                    <i className='bx bx-fingerprint'></i>
+                                    {status === 'verifying' && <div className="scan-line"></div>}
+                                </div>
+                                <p>{status === 'idle' ? 'Tap to scan finger' :
+                                    status === 'verifying' ? 'Verifying identity...' :
+                                        status === 'success' ? 'Verified Successfully' : 'Verification Failed'}</p>
+                            </div>
+                        )}
+
+                        {selectedMethod === 'radar' && (
+                            <div
+                                className="scanner-container"
+                                onClick={status === 'idle' ? simulateVerification : undefined}
+                                style={{ cursor: status === 'idle' ? 'pointer' : 'default' }}
+                            >
+                                <div className={`radar-scanner ${status === 'verifying' ? 'scanning' : ''} ${status === 'success' ? 'success' : ''}`}>
+                                    <div className="radar-circle"></div>
+                                    <div className="radar-circle"></div>
+                                    <div className="radar-sweep"></div>
+                                    <i className='bx bx-radar'></i>
+                                </div>
+                                <p>{status === 'idle' ? 'Tap to search signal' :
+                                    status === 'verifying' ? 'Signal detected, verifying...' :
+                                        status === 'success' ? 'Connected Successfully' : 'Signal Lost'}</p>
+                            </div>
+                        )}
+
+                        {selectedMethod === 'facial' && (
+                            <div
+                                className="scanner-container"
+                                onClick={status === 'idle' ? simulateVerification : undefined}
+                                style={{ cursor: status === 'idle' ? 'pointer' : 'default' }}
+                            >
+                                <div className={`face-scanner ${status === 'verifying' ? 'scanning' : ''} ${status === 'success' ? 'success' : ''}`}>
+                                    <div className="face-frame"></div>
+                                    <i className='bx bx-face'></i>
+                                    {status === 'verifying' && <div className="face-grid"></div>}
+                                </div>
+                                <p>{status === 'idle' ? 'Tap to start face scan' :
+                                    status === 'verifying' ? 'Scanning facial features...' :
+                                        status === 'success' ? 'Identity Verified' : 'Face Not Recognized'}</p>
+                            </div>
+                        )}
+
+                        <div className="verification-status">
+                            <div className={`status-step ${verificationChecks.biometric ? 'completed' : 'pending'}`}>
+                                <div className="step-icon">
+                                    {selectedMethod === 'radar' ? <i className='bx bx-broadcast'></i> :
+                                        selectedMethod === 'facial' ? <i className='bx bx-face'></i> :
+                                            <i className='bx bx-fingerprint'></i>}
+                                </div>
+                                <span>{selectedMethod === 'radar' ? 'Signal Check' :
+                                    selectedMethod === 'facial' ? 'Face Scan' : 'Biometric'}</span>
+                                {verificationChecks.biometric ? <i className='bx bx-check-circle success-icon'></i> : <i className='bx bx-loader-alt bx-spin'></i>}
+                            </div>
+                            <div className={`status-step ${verificationChecks.geofence ? 'completed' : 'pending'}`}>
+                                <div className="step-icon"><i className='bx bx-map-pin'></i></div>
+                                <span>Geofence</span>
+                                {verificationChecks.geofence ? <i className='bx bx-check-circle success-icon'></i> : <i className='bx bx-loader-alt bx-spin'></i>}
+                            </div>
+                            <div className={`status-step ${verificationChecks.cctv ? 'completed' : 'pending'}`}>
+                                <div className="step-icon"><i className='bx bx-cctv'></i></div>
+                                <span>CCTV Match</span>
+                                {verificationChecks.cctv ? <i className='bx bx-check-circle success-icon'></i> : <i className='bx bx-loader-alt bx-spin'></i>}
+                            </div>
+                        </div>
+
+                        {status === 'success' && (
+                            <div className="success-message-container">
+                                <div className="success-icon-large">
+                                    <i className='bx bx-check'></i>
+                                </div>
+                                <h3>Attendance Marked!</h3>
+                                <p>Your attendance has been recorded for Computer Science at {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* Today's Schedule Section (Moved here) */}
                 <div className="sd-card schedule-card" style={{ marginBottom: '30px' }}>
                     <div className="card-header">
@@ -255,139 +344,7 @@ const StudentMarkAttendance = () => {
                     </div>
                 </div>
 
-                {/* Verification Area */}
-                {selectedMethod && (
-                    <div className="verification-section">
-                        <div className="verification-card">
-                            {/* Fingerprint Verification */}
-                            {selectedMethod === 'fingerprint' && (
-                                <div className="verification-content">
-                                    <div className={`fingerprint-scanner ${status}`}>
-                                        <div className="scanner-ring"></div>
-                                        <div className="scanner-ring delay-1"></div>
-                                        <div className="scanner-ring delay-2"></div>
-                                        <i className='bx bx-fingerprint'></i>
-                                    </div>
-                                    <h3>
-                                        {status === 'idle' && 'Place your finger on the scanner'}
-                                        {status === 'scanning' && 'Scanning fingerprint...'}
-                                        {status === 'verifying' && 'Verifying identity...'}
-                                        {status === 'success' && 'Verified Successfully!'}
-                                        {status === 'error' && 'Verification Failed'}
-                                    </h3>
-                                    <div className="verification-checks">
-                                        <div className={`check ${verificationChecks.geofence ? 'passed' : ''}`}>
-                                            <i className='bx bx-map'></i>
-                                            <span>Geofence</span>
-                                            <i className={`bx ${verificationChecks.geofence ? 'bx-check-circle' : 'bx-loader-circle'}`}></i>
-                                        </div>
-                                        <div className={`check ${status === 'success' ? 'passed' : ''}`}>
-                                            <i className='bx bx-cctv'></i>
-                                            <span>CCTV Match</span>
-                                            <i className={`bx ${status === 'success' ? 'bx-check-circle' : 'bx-loader-circle'}`}></i>
-                                        </div>
-                                        <div className={`check ${status === 'success' ? 'passed' : ''}`}>
-                                            <i className='bx bx-fingerprint'></i>
-                                            <span>Biometric</span>
-                                            <i className={`bx ${status === 'success' ? 'bx-check-circle' : 'bx-loader-circle'}`}></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
 
-                            {/* Radar Verification */}
-                            {selectedMethod === 'radar' && (
-                                <div className="verification-content">
-                                    <div className={`radar-scanner ${status}`}>
-                                        <div className="radar-sweep"></div>
-                                        <div className="radar-circle"></div>
-                                        <div className="radar-circle delay-1"></div>
-                                        <div className="radar-circle delay-2"></div>
-                                        <div className="radar-dot"></div>
-                                    </div>
-                                    <h3>
-                                        {status === 'idle' && 'Searching for teacher\'s radar'}
-                                        {status === 'scanning' && 'Connecting to radar...'}
-                                        {status === 'verifying' && 'Verifying proximity...'}
-                                        {status === 'success' && 'Connected & Verified!'}
-                                        {status === 'error' && 'Out of Range'}
-                                    </h3>
-                                    <div className="radar-info">
-                                        <div className="radar-status">
-                                            <i className='bx bx-broadcast'></i>
-                                            <span>Teacher's Radar: <strong>{status === 'success' ? 'Active' : 'Searching...'}</strong></span>
-                                        </div>
-                                        <div className="radar-status">
-                                            <i className='bx bx-wifi'></i>
-                                            <span>Signal Strength: <strong>{status === 'success' ? 'Excellent' : '---'}</strong></span>
-                                        </div>
-                                        <div className="radar-status">
-                                            <i className='bx bx-target-lock'></i>
-                                            <span>Distance: <strong>{status === 'success' ? '5m' : '---'}</strong></span>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Facial Recognition Verification */}
-                            {selectedMethod === 'facial' && (
-                                <div className="verification-content">
-                                    <div className={`face-scanner ${status}`}>
-                                        <div className="face-frame">
-                                            <div className="corner top-left"></div>
-                                            <div className="corner top-right"></div>
-                                            <div className="corner bottom-left"></div>
-                                            <div className="corner bottom-right"></div>
-                                            {status === 'scanning' && <div className="scan-line"></div>}
-                                        </div>
-                                        <i className='bx bx-user'></i>
-                                    </div>
-                                    <h3>
-                                        {status === 'idle' && 'Position your face in the frame'}
-                                        {status === 'scanning' && 'Scanning face...'}
-                                        {status === 'verifying' && 'Analyzing features...'}
-                                        {status === 'success' && 'Face Verified!'}
-                                        {status === 'error' && 'Face Not Recognized'}
-                                    </h3>
-                                    <div className="verification-checks">
-                                        <div className={`check ${verificationChecks.geofence ? 'passed' : ''}`}>
-                                            <i className='bx bx-map'></i>
-                                            <span>College Geofence</span>
-                                            <i className={`bx ${verificationChecks.geofence ? 'bx-check-circle' : 'bx-loader-circle'}`}></i>
-                                        </div>
-                                        <div className={`check ${status === 'success' ? 'passed' : ''}`}>
-                                            <i className='bx bx-face'></i>
-                                            <span>Face Match</span>
-                                            <i className={`bx ${status === 'success' ? 'bx-check-circle' : 'bx-loader-circle'}`}></i>
-                                        </div>
-                                        <div className={`check ${status === 'success' ? 'passed' : ''}`}>
-                                            <i className='bx bx-shield-quarter'></i>
-                                            <span>Liveness</span>
-                                            <i className={`bx ${status === 'success' ? 'bx-check-circle' : 'bx-loader-circle'}`}></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Action Button */}
-                            <button
-                                className={`verify-btn ${status}`}
-                                onClick={simulateVerification}
-                                disabled={status === 'scanning' || status === 'verifying'}
-                            >
-                                {status === 'idle' && 'Start Verification'}
-                                {status === 'scanning' && 'Scanning...'}
-                                {status === 'verifying' && 'Verifying...'}
-                                {status === 'success' && (
-                                    <>
-                                        <i className='bx bx-check'></i> Attendance Marked
-                                    </>
-                                )}
-                                {status === 'error' && 'Try Again'}
-                            </button>
-                        </div>
-                    </div>
-                )}
             </div>
         </div>
     );
