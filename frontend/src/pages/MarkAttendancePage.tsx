@@ -1,4 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
+import { attendanceService } from '../services/attendanceService';
+import { studentService } from '../services/studentService';
+import { Student } from '../types';
 import './MarkAttendancePage.css';
 
 const MarkAttendancePage = () => {
@@ -6,16 +9,12 @@ const MarkAttendancePage = () => {
     const [cameraError, setCameraError] = useState(false);
     const [scanning, setScanning] = useState(false);
     const [detectedStudents, setDetectedStudents] = useState<string[]>([]);
+    const [statusMessage, setStatusMessage] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
 
-    // Mock student data for manual mode
-    const [students, setStudents] = useState([
-        { id: 1, name: 'John Doe', rollNo: 'CS101', status: 'not-marked' },
-        { id: 2, name: 'Jane Smith', rollNo: 'CS102', status: 'not-marked' },
-        { id: 3, name: 'Mike Johnson', rollNo: 'CS103', status: 'not-marked' },
-        { id: 4, name: 'Emily Davis', rollNo: 'CS104', status: 'not-marked' },
-        { id: 5, name: 'Chris Brown', rollNo: 'CS105', status: 'not-marked' },
-    ]);
+    // Students data for manual mode
+    const [students, setStudents] = useState<Student[]>([]);
 
     const stopCamera = () => {
         if (videoRef.current && videoRef.current.srcObject) {
@@ -38,19 +37,63 @@ const MarkAttendancePage = () => {
             }
         };
 
+        const loadStudents = async () => {
+            try {
+                const data = await studentService.getAll();
+                setStudents(data);
+            } catch (error) {
+                console.error('Failed to load students:', error);
+            }
+        };
+
         if (mode === 'camera') {
             startCamera();
+        } else {
+            loadStudents();
         }
         return () => stopCamera();
     }, [mode]);
 
-    const handleStartScan = () => {
+    const handleStartScan = async () => {
         setScanning(true);
-        // Simulate face detection
-        setTimeout(() => {
-            setDetectedStudents(['John Doe', 'Jane Smith', 'Emily Davis']);
+        setStatusMessage("Capturing and analyzing face...");
+        
+        try {
+            // Capture image from video
+            if (!videoRef.current) return;
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = videoRef.current.videoWidth;
+            canvas.height = videoRef.current.videoHeight;
+            canvas.getContext('2d')?.drawImage(videoRef.current, 0, 0);
+            
+            const blob = await new Promise<Blob>((resolve) => {
+                canvas.toBlob((b) => resolve(b!), 'image/jpeg');
+            });
+
+            // Get user location (optional)
+            let latitude, longitude;
+            try {
+                const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject);
+                });
+                latitude = position.coords.latitude;
+                longitude = position.coords.longitude;
+            } catch (err) {
+                console.log('Location not available');
+            }
+
+            // Mark attendance via API
+            const response = await attendanceService.markWithFace(blob, latitude, longitude);
+            setDetectedStudents([response.data.student?.name || 'Unknown']);
+            setStatusMessage(`✅ Attendance marked for ${response.data.student?.name || 'student'}`);
+        } catch (error: any) {
+            const errorMsg = error.response?.data?.detail || error.message || "Face detection failed";
+            setStatusMessage("❌ Error: " + errorMsg);
+            setDetectedStudents([]);
+        } finally {
             setScanning(false);
-        }, 3000);
+        }
     };
 
     const markAttendance = (id: number, status: 'present' | 'absent') => {
@@ -124,6 +167,19 @@ const MarkAttendancePage = () => {
                                     )}
                                 </button>
                             </div>
+
+                            {statusMessage && (
+                                <div style={{ 
+                                    padding: '12px', 
+                                    margin: '10px 0',
+                                    borderRadius: '8px',
+                                    background: statusMessage.includes('✅') ? '#16a34a22' : '#dc262622',
+                                    color: statusMessage.includes('✅') ? '#16a34a' : '#dc2626',
+                                    textAlign: 'center'
+                                }}>
+                                    {statusMessage}
+                                </div>
+                            )}
 
                             {detectedStudents.length > 0 && (
                                 <div className="detected-list">

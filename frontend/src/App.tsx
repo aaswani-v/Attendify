@@ -18,7 +18,7 @@ import ManageUsersPage from './pages/ManageUsersPage';
 import './App.css';
 
 function App() {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Changed to false to skip splash screen
 
   return (
     <>
