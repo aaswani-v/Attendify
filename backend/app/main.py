@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from app.models.attendance import Student, AttendanceLog, Base
 from app.models.timetable import Teacher, Room, Subject, ClassGroup, TimetableEntry, teacher_subject
+from app.models.user import User
 from app.api.routes.timetable import router as timetable_router
 from app.api.routes.attendance import router as attendance_router
 from app.core.config import config
@@ -17,6 +18,8 @@ import uvicorn
 
 # Initialize database
 logger.info("Initializing database...")
+from app.models.user import Base as UserBase
+UserBase.metadata.create_all(bind=engine)
 create_tables()
 logger.info("Database initialized successfully")
 
@@ -37,7 +40,8 @@ app.add_middleware(
 )
 
 # Include routers
-from app.api.routes import notices
+from app.api.routes import notices, auth
+app.include_router(auth.router, prefix="/api")
 app.include_router(timetable_router)
 app.include_router(attendance_router, prefix="/api/attendance")
 app.include_router(notices.router, prefix="/api/notices")

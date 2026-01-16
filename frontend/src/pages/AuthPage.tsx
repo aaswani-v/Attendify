@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import type { UserRole } from '../types/auth.types';
 import './Auth.css';
 
 const AuthPage = () => {
@@ -19,7 +21,12 @@ const AuthPage = () => {
     const [adminUser, setAdminUser] = useState('');
     const [adminPass, setAdminPass] = useState('');
 
+    // Loading and error states
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
     const navigate = useNavigate();
+    const { login } = useAuth();
 
     // Effect to apply theme to body/root
     useEffect(() => {
@@ -30,23 +37,38 @@ const AuthPage = () => {
         setTheme(prev => prev === 'light' ? 'dark' : 'light');
     };
 
+    const handleLogin = async (username: string, password: string, role: UserRole) => {
+        if (!username || !password) {
+            setError('Please fill in all fields');
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+
+        try {
+            await login({ username, password, role });
+            // Navigation is handled by useAuth hook
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Login failed. Please check your credentials.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleStudentLogin = (e: React.FormEvent) => {
         e.preventDefault();
-        localStorage.setItem('userRole', 'student');
-        navigate('/dashboard');
+        handleLogin(studentUser, studentPass, 'student');
     };
 
     const handleFacultyLogin = (e: React.FormEvent) => {
         e.preventDefault();
-        localStorage.setItem('userRole', 'faculty');
-        navigate('/dashboard');
+        handleLogin(facultyUser, facultyPass, 'faculty');
     };
 
     const handleAdminLogin = (e: React.FormEvent) => {
         e.preventDefault();
-        // Here you would implement actual Admin Authentication
-        console.log('Admin Login:', { adminUser, adminPass });
-        navigate('/dashboard'); // Proceed to dashboard (or special admin route)
+        handleLogin(adminUser, adminPass, 'admin');
     };
 
     if (isAdmin) {
@@ -58,12 +80,28 @@ const AuthPage = () => {
                 <div className="form-container" style={{ position: 'relative', width: '100%', height: '100%', zIndex: 10 }}>
                     <form onSubmit={handleAdminLogin} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
                         <h1 style={{ marginBottom: '20px' }}>Admin Portal</h1>
+                        
+                        {error && (
+                            <div style={{ 
+                                backgroundColor: '#f44336', 
+                                color: 'white', 
+                                padding: '12px', 
+                                borderRadius: '8px', 
+                                marginBottom: '16px',
+                                width: '100%',
+                                textAlign: 'center'
+                            }}>
+                                {error}
+                            </div>
+                        )}
                         <input
                             type="text"
                             placeholder="Admin Username"
                             value={adminUser}
                             onChange={(e) => setAdminUser(e.target.value)}
                             style={{ margin: '10px 0', padding: '12px 15px', width: '100%' }}
+                            disabled={loading}
+                            required
                         />
                         <input
                             type="password"
@@ -71,12 +109,20 @@ const AuthPage = () => {
                             value={adminPass}
                             onChange={(e) => setAdminPass(e.target.value)}
                             style={{ margin: '10px 0', padding: '12px 15px', width: '100%' }}
+                            disabled={loading}
+                            required
                         />
-                        <button style={{ marginTop: '20px' }}>Login to Dashboard</button>
+                        <button 
+                            style={{ marginTop: '20px' }}
+                            disabled={loading}
+                        >
+                            {loading ? 'Logging in...' : 'Login to Dashboard'}
+                        </button>
                         <button 
                             type="button" 
-                            onClick={() => setIsAdmin(false)}
+                            onClick={() => { setIsAdmin(false); setError(null); }}
                             style={{ marginTop: '10px', background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--text-secondary)' }}
+                            disabled={loading}
                         >
                             Back to Standard Login
                         </button>
@@ -127,20 +173,38 @@ const AuthPage = () => {
                         <a href="#" className="social"><i className='bx bxl-linkedin'></i></a>
                     </div>
                     <span>or use your email for registration</span>
+                    {error && (
+                        <div style={{ 
+                            background: '#fee', 
+                            color: '#c33', 
+                            padding: '10px', 
+                            borderRadius: '4px', 
+                            marginBottom: '10px',
+                            fontSize: '14px'
+                        }}>
+                            {error}
+                        </div>
+                    )}
                     <input
                         type="text"
                         placeholder="Faculty ID / Username"
                         value={facultyUser}
                         onChange={(e) => setFacultyUser(e.target.value)}
+                        disabled={loading}
+                        required
                     />
                     <input
                         type="password"
                         placeholder="Password"
                         value={facultyPass}
                         onChange={(e) => setFacultyPass(e.target.value)}
+                        disabled={loading}
+                        required
                     />
                     <a href="#">Forgot your password?</a>
-                    <button>Sign In</button>
+                    <button disabled={loading}>
+                        {loading ? 'Logging in...' : 'Sign In'}
+                    </button>
                 </form>
             </div>
 
@@ -153,20 +217,38 @@ const AuthPage = () => {
                         <a href="#" className="social"><i className='bx bxl-linkedin'></i></a>
                     </div>
                     <span>or use your account</span>
+                    {error && (
+                        <div style={{ 
+                            background: '#fee', 
+                            color: '#c33', 
+                            padding: '10px', 
+                            borderRadius: '4px', 
+                            marginBottom: '10px',
+                            fontSize: '14px'
+                        }}>
+                            {error}
+                        </div>
+                    )}
                     <input
                         type="text"
                         placeholder="Student ID / Username"
                         value={studentUser}
                         onChange={(e) => setStudentUser(e.target.value)}
+                        disabled={loading}
+                        required
                     />
                     <input
                         type="password"
                         placeholder="Password"
                         value={studentPass}
                         onChange={(e) => setStudentPass(e.target.value)}
+                        disabled={loading}
+                        required
                     />
                     <a href="#">Forgot your password?</a>
-                    <button>Sign In</button>
+                    <button disabled={loading}>
+                        {loading ? 'Logging in...' : 'Sign In'}
+                    </button>
                 </form>
             </div>
 

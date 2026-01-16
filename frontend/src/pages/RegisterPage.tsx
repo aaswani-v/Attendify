@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import styled from 'styled-components';
 import { GlassCard, GlassButton, GlassInput } from '../styles/glassmorphism';
-import { API_ENDPOINTS } from '../utils/api';
+import { studentService } from '../services/studentService';
 
 const Container = styled.div`
   padding: 32px;
@@ -56,29 +56,16 @@ const RegisterPage = () => {
         setLoading(true);
         setStatus("Registering...");
 
-        const formData = new FormData();
-        formData.append('name', name);
-        formData.append('roll_number', rollNo);
-        formData.append('file', capturedImage, 'face.jpg');
-
         try {
-            const res = await fetch(API_ENDPOINTS.REGISTER_STUDENT, {
-                method: 'POST',
-                body: formData
-            });
-            const data = await res.json();
-            
-            if (res.ok) {
-                setStatus("Success: " + data.message);
-                setName('');
-                setRollNo('');
-                setCapturedImage(null);
-                setPreviewUrl(null);
-            } else {
-                setStatus("Error: " + data.detail);
-            }
-        } catch {
-            setStatus("Network Error");
+            const response = await studentService.register(name, rollNo, capturedImage);
+            setStatus("✅ Success: " + response.message);
+            setName('');
+            setRollNo('');
+            setCapturedImage(null);
+            setPreviewUrl(null);
+        } catch (error: any) {
+            const errorMsg = error.response?.data?.detail || error.message || "Registration failed";
+            setStatus("❌ Error: " + errorMsg);
         } finally {
             setLoading(false);
         }
