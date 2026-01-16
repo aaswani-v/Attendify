@@ -1,290 +1,192 @@
-/* Profile Page */
 .profile-page {
+    padding: 24px;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+/* Profile Header */
+.profile-header-card {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.4));
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+    text-align: center;
+    padding: 40px;
+    margin-bottom: 30px;
+}
+
+.profile-avatar-large {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    margin: 0 auto 16px;
+    padding: 4px;
+    background: #fff;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.profile-avatar-large img {
     width: 100%;
-    max-width: 600px;
-    margin: 20px auto;
-    padding-bottom: 100px;
-    font-family: 'Poppins', sans-serif;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
 }
 
-/* Header */
-.pp-header {
-    margin-bottom: 25px;
-}
-
-.pp-header h2 {
+.profile-name {
+    margin: 0;
+    color: #1e293b;
     font-size: 1.8rem;
-    color: #0f172a;
-    margin: 0 0 5px 0;
     font-weight: 700;
 }
 
-.pp-header p {
-    color: #64748b;
-    font-size: 0.95rem;
-    margin: 0;
-}
-
-/* Profile Card */
-.profile-card {
-    background: #fff;
-    border-radius: 16px;
-    border: 1px solid #e2e8f0;
-    padding: 30px;
-    text-align: center;
-    margin-bottom: 25px;
-}
-
-.avatar-section {
-    position: relative;
+.profile-role-badge {
     display: inline-block;
-    margin-bottom: 20px;
-}
-
-.profile-avatar {
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    border: 4px solid #22c55e;
-}
-
-.btn-change-avatar {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: #0f172a;
-    color: #fff;
-    border: 2px solid #fff;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.profile-info h3 {
-    margin: 0 0 8px 0;
-    font-size: 1.3rem;
-    color: #1e293b;
-}
-
-.role-badge {
-    display: inline-block;
-    background: rgba(34, 197, 94, 0.1);
-    color: #16a34a;
-    padding: 4px 12px;
+    background: #dcfce7;
+    color: #22c55e;
+    padding: 6px 16px;
     border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    margin-bottom: 15px;
-}
-
-.email,
-.phone {
-    color: #64748b;
-    font-size: 0.9rem;
-    margin: 5px 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-}
-
-/* Settings Sections */
-.settings-section {
-    background: #fff;
-    border-radius: 16px;
-    border: 1px solid #e2e8f0;
-    padding: 20px;
-    margin-bottom: 20px;
-}
-
-.settings-section h4 {
-    margin: 0 0 15px 0;
     font-size: 0.85rem;
-    color: #94a3b8;
-    text-transform: uppercase;
     font-weight: 600;
+    margin-top: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-.setting-item {
+/* Grid Layout */
+.profile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 25px;
+}
+
+/* Glass Card Generic */
+.glass-card {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+    padding: 30px;
+}
+
+.glass-card h3 {
+    margin: 0 0 25px 0;
+    color: #1e293b;
+    font-size: 1.2rem;
+    font-weight: 600;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 15px 0;
-    border-bottom: 1px solid #f1f5f9;
+    gap: 10px;
 }
 
-.setting-item:last-child {
+/* Info Group */
+.info-group {
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.info-group:last-child {
     border-bottom: none;
+    margin-bottom: 0;
     padding-bottom: 0;
 }
 
-.setting-item.clickable {
-    cursor: pointer;
+.info-label {
+    display: block;
+    color: #64748b;
+    font-size: 0.85rem;
+    margin-bottom: 5px;
 }
 
-.setting-item.clickable:hover {
-    background: #f8fafc;
-    margin: 0 -20px;
-    padding-left: 20px;
-    padding-right: 20px;
+.info-value {
+    color: #1e293b;
+    font-size: 1.05rem;
+    font-weight: 500;
 }
 
-.setting-info {
+/* Settings Buttons */
+.settings-list {
     display: flex;
-    align-items: center;
+    flex-direction: column;
     gap: 15px;
 }
 
-.setting-info>i {
-    font-size: 1.4rem;
-    color: #64748b;
-}
-
-.setting-title {
-    display: block;
-    font-weight: 500;
-    color: #1e293b;
-    font-size: 0.95rem;
-}
-
-.setting-desc {
-    display: block;
-    font-size: 0.85rem;
-    color: #94a3b8;
-}
-
-/* Toggle Switch */
-.toggle-switch {
-    position: relative;
-    width: 50px;
-    height: 26px;
-}
-
-.toggle-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #e2e8f0;
-    border-radius: 26px;
-    transition: 0.3s;
-}
-
-.slider:before {
-    position: absolute;
-    content: "";
-    height: 20px;
-    width: 20px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    border-radius: 50%;
-    transition: 0.3s;
-}
-
-.toggle-switch input:checked+.slider {
-    background-color: #22c55e;
-}
-
-.toggle-switch input:checked+.slider:before {
-    transform: translateX(24px);
-}
-
-/* Logout Button */
-.btn-logout {
-    width: 100%;
-    padding: 14px;
-    background: #fff;
-    color: #ef4444;
-    border: 1px solid #fecaca;
-    border-radius: 12px;
-    font-weight: 600;
-    font-size: 1rem;
+.setting-btn {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 10px;
+    justify-content: space-between;
+    width: 100%;
+    padding: 15px 20px;
+    border: none;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.5);
+    color: #1e293b;
+    font-size: 0.95rem;
+    font-weight: 500;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s ease;
 }
 
-.btn-logout:hover {
-    background: #fef2f2;
+.setting-btn:hover {
+    background: rgba(255, 255, 255, 0.9);
+    transform: translateX(4px);
 }
 
-/* Dark Mode Styles */
-body.dark-mode {
-    background: #0f172a;
-    color: #e2e8f0;
-}
-
-body.dark-mode .profile-page .pp-header h2,
-body.dark-mode .profile-page .profile-info h3 {
-    color: #f1f5f9;
-}
-
-body.dark-mode .profile-page .pp-header p,
-body.dark-mode .profile-page .email,
-body.dark-mode .profile-page .phone {
-    color: #94a3b8;
-}
-
-body.dark-mode .profile-page .profile-card,
-body.dark-mode .profile-page .settings-section {
-    background: #1e293b;
-    border-color: #334155;
-}
-
-body.dark-mode .profile-page .settings-section h4 {
+.setting-btn i {
     color: #64748b;
 }
 
-body.dark-mode .profile-page .setting-item {
-    border-color: #334155;
+.setting-btn.danger {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
 }
 
-body.dark-mode .profile-page .setting-item.clickable:hover {
-    background: #334155;
+.setting-btn.danger:hover {
+    background: rgba(239, 68, 68, 0.2);
 }
 
-body.dark-mode .profile-page .setting-info>i {
-    color: #94a3b8;
+/* Dark Mode */
+body.dark-mode .profile-header-card {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(30, 41, 59, 0.4));
+    border-color: rgba(255, 255, 255, 0.1);
 }
 
-body.dark-mode .profile-page .setting-title {
+body.dark-mode .profile-avatar-large {
+    background: #1e293b;
+}
+
+body.dark-mode .profile-name {
     color: #f1f5f9;
 }
 
-body.dark-mode .profile-page .setting-desc {
+body.dark-mode .profile-role-badge {
+    background: rgba(34, 197, 94, 0.2);
+}
+
+body.dark-mode .glass-card {
+    background: rgba(30, 41, 59, 0.7);
+    border-color: rgba(255, 255, 255, 0.05);
+}
+
+body.dark-mode .glass-card h3 {
+    color: #f1f5f9;
+}
+
+body.dark-mode .info-label {
     color: #94a3b8;
 }
 
-body.dark-mode .profile-page .setting-item>i {
-    color: #64748b;
+body.dark-mode .info-value {
+    color: #f1f5f9;
 }
 
-body.dark-mode .profile-page .slider {
-    background-color: #475569;
+body.dark-mode .setting-btn {
+    background: rgba(255, 255, 255, 0.05);
+    color: #f1f5f9;
 }
 
-body.dark-mode .profile-page .btn-logout {
-    background: #1e293b;
-    border-color: #7f1d1d;
-    color: #f87171;
-}
-
-body.dark-mode .profile-page .btn-logout:hover {
-    background: #371717;
+body.dark-mode .setting-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
 }

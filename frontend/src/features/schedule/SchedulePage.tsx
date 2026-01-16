@@ -1,12 +1,49 @@
 import React, { useState, useRef } from 'react';
 import './SchedulePage.css';
+import './StudentSchedule.css';
 
 const SchedulePage = () => {
+    // In a real app, this would come from a context hook
+    const role = 'student'; // Currently hardcoded to student for demo
+
     const [file, setFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);
     const [uploaded, setUploaded] = useState(false);
     const [dragActive, setDragActive] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
+
+    // Mock Timetable Data for Student
+    const timeSlots = ['9:00 - 10:00', '10:00 - 11:00', '11:00 - 11:30', '11:30 - 12:30', '12:30 - 1:30'];
+    const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+
+    const scheduleData: any = {
+        'Monday': {
+            '9:00 - 10:00': { subject: 'Mathematics', room: '201', professor: 'Dr. Rajesh' },
+            '10:00 - 11:00': { subject: 'Physics', room: '102', professor: 'Prof. Anita' },
+            '11:30 - 12:30': { subject: 'Computer Science', room: 'Lab 1', professor: 'Dr. Amit' },
+        },
+        'Tuesday': {
+            '9:00 - 10:00': { subject: 'Chemistry', room: '305', professor: 'Dr. Suresh' },
+            '11:30 - 12:30': { subject: 'English', room: '101', professor: 'Ms. Priya' },
+            '12:30 - 1:30': { subject: 'History', room: '402', professor: 'Prof. Meena' },
+        },
+        'Wednesday': {
+            '9:00 - 10:00': { subject: 'Mathematics', room: '201', professor: 'Dr. Rajesh' },
+            '10:00 - 11:00': { subject: 'Physics', room: '102', professor: 'Prof. Anita' },
+            '12:30 - 1:30': { subject: 'Computer Science', room: 'Lab 1', professor: 'Dr. Amit' },
+        },
+        'Thursday': {
+            '9:00 - 10:00': { subject: 'Mathematics', room: '201', professor: 'Dr. Rajesh' },
+            '10:00 - 11:00': { subject: 'Physics', room: '102', professor: 'Prof. Anita' },
+            '11:30 - 12:30': { subject: 'Chemistry', room: '305', professor: 'Dr. Suresh' },
+            '12:30 - 1:30': { subject: 'English', room: '101', professor: 'Ms. Priya' },
+        },
+        'Friday': {
+            '9:00 - 10:00': { subject: 'Computer Science', room: 'Lab 1', professor: 'Dr. Amit' },
+            '10:00 - 11:00': { subject: 'History', room: '402', professor: 'Prof. Meena' },
+            '11:30 - 12:30': { subject: 'Sports', room: 'Ground', professor: 'Mr. Suresh' },
+        }
+    };
 
     const handleDrag = (e: React.DragEvent) => {
         e.preventDefault();
@@ -42,7 +79,6 @@ const SchedulePage = () => {
     const handleUpload = () => {
         if (!file) return;
         setUploading(true);
-        // Simulate upload and parsing delay
         setTimeout(() => {
             setUploading(false);
             setUploaded(true);
@@ -52,6 +88,73 @@ const SchedulePage = () => {
     const openFileDialog = () => {
         inputRef.current?.click();
     };
+
+    if (role === 'student') {
+        return (
+            <div className="student-schedule-container">
+                <div className="ss-header">
+                    <h2>Weekly Timetable</h2>
+                    <p>View your complete class schedule for the week</p>
+                </div>
+
+                <div className="schedule-grid-container">
+                    <table className="schedule-table">
+                        <thead>
+                            <tr>
+                                <th>Day / Time</th>
+                                {timeSlots.map((time, index) => (
+                                    <th key={index}>{time}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {weekDays.map((day) => (
+                                <tr key={day}>
+                                    <td>{day}</td>
+                                    {timeSlots.map((time, index) => {
+                                        // Specific logic for break time
+                                        if (time === '11:00 - 11:30') {
+                                            return index === 2 && day === 'Monday' ? (
+                                                <td key={time} rowSpan={5} className="break-cell vertical-text">Break</td>
+                                            ) : null;
+                                        }
+
+                                        const classInfo = scheduleData[day]?.[time];
+
+                                        if (time === '11:00 - 11:30') {
+                                            // Break column handling is weird in standard tables without full rowspan logic
+                                            // Simplified: Just rendering a break cell for each row for now if not using fancy rowspan
+                                            return <td key={time} className="break-cell">Break</td>;
+                                        }
+
+                                        return (
+                                            <td key={time}>
+                                                {classInfo ? (
+                                                    <div className="class-cell-content">
+                                                        <span className="class-subject">{classInfo.subject}</span>
+                                                        <div className="class-meta">
+                                                            <span className="class-room">
+                                                                <i className='bx bx-map'></i> {classInfo.room}
+                                                            </span>
+                                                            <span className="class-prof">
+                                                                <i className='bx bx-user'></i> {classInfo.professor.split(' ')[1]}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <span className="empty-cell">Free</span>
+                                                )}
+                                            </td>
+                                        );
+                                    })}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="schedule-page">

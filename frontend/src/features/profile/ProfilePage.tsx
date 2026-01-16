@@ -1,85 +1,79 @@
-import React from 'react';
-import styled from 'styled-components';
-import { GlassCard, GlassButton, Grid } from '../../styles/glassmorphism';
-
-const Container = styled.div`
-  padding: 32px;
-`;
-
-const ProfileHeader = styled(GlassCard)`
-  text-align: center;
-  padding: 40px;
-  margin-bottom: 32px;
-  
-  .avatar {
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #a78bfa 0%, #3b82f6 100%);
-    margin: 0 auto 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 40px;
-    font-weight: bold;
-    color: white;
-  }
-`;
-
-const InfoGroup = styled.div`
-  margin-bottom: 16px;
-  label { opacity: 0.7; font-size: 14px; display: block; margin-bottom: 4px; }
-  div { font-size: 18px; font-weight: 500; }
-`;
+import './ProfilePage.css';
 
 const ProfilePage = () => {
-    const role = localStorage.getItem('userRole') || 'student';
-    const name = role === 'admin' ? "System Admin" : role === 'faculty' ? "Prof. Albus Dumbledore" : "Harry Potter";
-    const id = role === 'admin' ? "ADM-001" : role === 'faculty' ? "FAC-992" : "STU-2024-001";
+    // In a real app, you'd get the role and user data from context
+    const role = 'student';
+
+    const user = {
+        name: "Alisha Khan",
+        id: "STU-2024-001",
+        email: "alisha.khan@attendify.edu",
+        department: "Computer Science & Engineering",
+        avatar: "https://ui-avatars.com/api/?name=Alisha+Khan&background=fff&color=3B753D&size=128"
+    };
 
     return (
-        <Container>
-            <ProfileHeader>
-                <div className="avatar">{name.charAt(0)}</div>
-                <h2>{name}</h2>
-                <div style={{ opacity: 0.7, textTransform: 'uppercase', letterSpacing: '1px', fontSize: '14px', marginTop: '8px' }}>
-                    {role}
+        <div className="profile-page">
+            <div className="profile-header-card">
+                <div className="profile-avatar-large">
+                    <img src={user.avatar} alt="Profile" />
                 </div>
-            </ProfileHeader>
-            
-            <Grid columns={2}>
-                <GlassCard>
-                    <h3>📝 Personal Information</h3>
-                    <div style={{ marginTop: '20px' }}>
-                         <InfoGroup>
-                            <label>Full Name</label>
-                            <div>{name}</div>
-                         </InfoGroup>
-                         <InfoGroup>
-                            <label>User ID / Roll Number</label>
-                            <div>{id}</div>
-                         </InfoGroup>
-                         <InfoGroup>
-                            <label>Email</label>
-                            <div>{role}@attendify.edu</div>
-                         </InfoGroup>
-                         <InfoGroup>
-                            <label>Department</label>
-                            <div>Computer Science & Engineering</div>
-                         </InfoGroup>
+                <h2 className="profile-name">{user.name}</h2>
+                <span className="profile-role-badge">{role}</span>
+            </div>
+
+            <div className="profile-grid">
+                <div className="glass-card">
+                    <h3>
+                        <i className='bx bx-id-card'></i>
+                        Personal Information
+                    </h3>
+                    <div className="info-list">
+                        <div className="info-group">
+                            <span className="info-label">Full Name</span>
+                            <span className="info-value">{user.name}</span>
+                        </div>
+                        <div className="info-group">
+                            <span className="info-label">User ID / Roll Number</span>
+                            <span className="info-value">{user.id}</span>
+                        </div>
+                        <div className="info-group">
+                            <span className="info-label">Email</span>
+                            <span className="info-value">{user.email}</span>
+                        </div>
+                        <div className="info-group">
+                            <span className="info-label">Department</span>
+                            <span className="info-value">{user.department}</span>
+                        </div>
                     </div>
-                </GlassCard>
-                
-                <GlassCard>
-                    <h3>⚙️ Settings</h3>
-                    <div style={{ marginTop: '20px', display:'flex', flexDirection:'column', gap:'12px' }}>
-                        <GlassButton>Change Password</GlassButton>
-                        <GlassButton>Notification Preferences</GlassButton>
-                        <GlassButton style={{ background: 'rgba(244, 67, 54, 0.2)', color:'#ff6b6b' }}>Delete Account</GlassButton>
+                </div>
+
+                <div className="glass-card">
+                    <h3>
+                        <i className='bx bx-cog'></i>
+                        Settings
+                    </h3>
+                    <div className="settings-list">
+                        <button className="setting-btn">
+                            <span>Change Password</span>
+                            <i className='bx bx-chevron-right'></i>
+                        </button>
+                        <button className="setting-btn">
+                            <span>Notification Preferences</span>
+                            <i className='bx bx-chevron-right'></i>
+                        </button>
+                        <button className="setting-btn">
+                            <span>Privacy Settings</span>
+                            <i className='bx bx-chevron-right'></i>
+                        </button>
+                        <button className="setting-btn danger">
+                            <span>Log Out</span>
+                            <i className='bx bx-log-out'></i>
+                        </button>
                     </div>
-                </GlassCard>
-            </Grid>
-        </Container>
+                </div>
+            </div>
+        </div>
     );
 };
 
