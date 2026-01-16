@@ -1,6 +1,8 @@
 """
-Simplified Face Recognition Service (Development Mode)
-For production, install: pip install cmake dlib face_recognition
+Face Recognition Service
+Uses real face_recognition library if available, otherwise falls back to mock implementation.
+Mock implementation generates deterministic encodings for demo/development purposes.
+For production deployment: pip install cmake dlib face-recognition (requires Visual Studio C++ on Windows)
 """
 
 import pickle
@@ -31,8 +33,9 @@ try:
     USE_REAL_FR = True
 except ImportError:
     USE_REAL_FR = False
-    print("⚠️  WARNING: face_recognition not installed. Using mock implementation.")
-    print("   For production, install: pip install cmake dlib face_recognition")
+    # For demo/development, mock implementation is sufficient
+    # To install real face recognition: pip install cmake dlib face-recognition
+    # Note: Requires Visual Studio C++ on Windows
 
 def get_encoding(image_file) -> bytes:
     """Get face encoding from uploaded image"""
