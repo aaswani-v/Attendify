@@ -20,22 +20,51 @@ const ProfilePage = () => {
         navigate('/');
     };
 
-    const user = {
+    const [isEditing, setIsEditing] = useState(false);
+    const [editableUser, setEditableUser] = useState({
         name: "Alisha Khan",
         id: "STU-2024-001",
         email: "alisha.khan@attendify.edu",
         department: "Computer Science & Engineering",
         avatar: "https://ui-avatars.com/api/?name=Alisha+Khan&background=fff&color=3B753D&size=128"
+    });
+
+    const handleSave = () => {
+        setIsEditing(false);
+        // In a real app, API call to update profile would go here
+        console.log("Saved profile:", editableUser);
     };
 
     return (
         <div className="profile-page">
             <div className="profile-header-card">
                 <div className="profile-avatar-large">
-                    <img src={user.avatar} alt="Profile" />
+                    <img src={editableUser.avatar} alt="Profile" />
+                    {isEditing && (
+                        <button className="edit-avatar-icon">
+                            <i className='bx bx-camera'></i>
+                        </button>
+                    )}
                 </div>
-                <h2 className="profile-name">{user.name}</h2>
+                {isEditing ? (
+                    <input
+                        type="text"
+                        className="profile-name-input"
+                        value={editableUser.name}
+                        onChange={(e) => setEditableUser({ ...editableUser, name: e.target.value })}
+                    />
+                ) : (
+                    <h2 className="profile-name">{editableUser.name}</h2>
+                )}
                 <span className="profile-role-badge">{role}</span>
+
+                <button
+                    className={`profile-action-btn ${isEditing ? 'save-btn' : 'edit-btn'}`}
+                    onClick={() => isEditing ? handleSave() : setIsEditing(true)}
+                >
+                    <i className={`bx ${isEditing ? 'bx-check' : 'bx-edit'}`}></i>
+                    {isEditing ? 'Save Changes' : 'Edit Profile'}
+                </button>
             </div>
 
             <div className="profile-grid">
@@ -47,19 +76,46 @@ const ProfilePage = () => {
                     <div className="info-list">
                         <div className="info-group">
                             <span className="info-label">Full Name</span>
-                            <span className="info-value">{user.name}</span>
+                            {isEditing ? (
+                                <input
+                                    type="text"
+                                    className="profile-input"
+                                    value={editableUser.name}
+                                    onChange={(e) => setEditableUser({ ...editableUser, name: e.target.value })}
+                                />
+                            ) : (
+                                <span className="info-value">{editableUser.name}</span>
+                            )}
                         </div>
                         <div className="info-group">
                             <span className="info-label">User ID / Roll Number</span>
-                            <span className="info-value">{user.id}</span>
+                            <span className="info-value">{editableUser.id}</span>
                         </div>
                         <div className="info-group">
                             <span className="info-label">Email</span>
-                            <span className="info-value">{user.email}</span>
+                            {isEditing ? (
+                                <input
+                                    type="text"
+                                    className="profile-input"
+                                    value={editableUser.email}
+                                    onChange={(e) => setEditableUser({ ...editableUser, email: e.target.value })}
+                                />
+                            ) : (
+                                <span className="info-value">{editableUser.email}</span>
+                            )}
                         </div>
                         <div className="info-group">
                             <span className="info-label">Department</span>
-                            <span className="info-value">{user.department}</span>
+                            {isEditing ? (
+                                <input
+                                    type="text"
+                                    className="profile-input"
+                                    value={editableUser.department}
+                                    onChange={(e) => setEditableUser({ ...editableUser, department: e.target.value })}
+                                />
+                            ) : (
+                                <span className="info-value">{editableUser.department}</span>
+                            )}
                         </div>
                     </div>
                 </div>

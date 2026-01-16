@@ -4,34 +4,32 @@
     /* Default Light Theme Variables */
     --bg-color: #f6f5f7;
     --container-bg: #fff;
-    --text-main: #000;
-    --text-secondary: #333;
-    --input-bg: #eee;
+    --text-main: #000000;
+    /* Pure Black */
+    --text-secondary: #333333;
+    --input-bg: #f3f3f3;
     --input-border: transparent;
-    /* or #ccc if preferred */
     --button-bg: #3B753D;
-    /* Green Theme */
-    --button-text: #fff;
-    /* White Text on Green Button */
-    --form-bg: #fff;
+    --button-text: #ffffff;
+    --form-bg: #ffffff;
     --shadow-color: rgba(0, 0, 0, 0.25);
 
-    /* Overlay specific (always Gold/Black) */
+    /* Overlay specific */
     --overlay-bg: #FFD700;
-    --overlay-text: #000;
+    --overlay-text: #000000;
 }
 
 [data-theme="dark"] {
     /* Dark Theme Variables */
     --bg-color: #121212;
     --container-bg: #1e1e1e;
-    --text-main: #fff;
-    --text-secondary: #ccc;
-    --input-bg: #2d2d2d;
+    --text-main: #ffffff;
+    /* Pure White */
+    --text-secondary: #e0e0e0;
+    --input-bg: #333333;
     --input-border: #444;
     --button-bg: #3B753D;
-    /* Green accent */
-    --button-text: #fff;
+    --button-text: #ffffff;
     --form-bg: #1e1e1e;
     --shadow-color: rgba(0, 0, 0, 0.5);
 }

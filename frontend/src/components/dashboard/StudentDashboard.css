@@ -165,7 +165,8 @@
     background: #fff;
     padding: 24px;
     border-radius: 16px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+    /* Increased Shadow */
     border: 1px solid rgba(0, 0, 0, 0.04);
 }
 
@@ -208,7 +209,8 @@
     background: #fff;
     border-radius: 16px;
     padding: 24px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    /* Increased Shadow */
     border: 1px solid rgba(0, 0, 0, 0.04);
     margin-bottom: 20px;
 }
