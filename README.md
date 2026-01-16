@@ -1,3 +1,4 @@
+#created by neetu
 # Attendify - Enterprise Student Management System
 
 Complete unified platform for **Face Recognition Attendance** and **AI-Powered Timetable Generation**.
