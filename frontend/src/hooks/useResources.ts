@@ -4,7 +4,7 @@
 
 import { useState, useCallback } from 'react';
 import { API_ENDPOINTS } from '../utils/api';
-import { Teacher, Room, Subject, ClassGroup } from '../utils/types';
+import type { Teacher, Room, Subject, ClassGroup } from '../utils/types';
 
 export const useResources = () => {
   const [teachers, setTeachers] = useState<Teacher[]>([]);

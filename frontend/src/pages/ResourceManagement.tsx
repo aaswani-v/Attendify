@@ -6,7 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { useResources } from '../hooks/useResources';
-import { GlassCard, GlassButton, GlassInput, GlassSelect, Grid, Badge } from '../styles/glassmorphism';
+import { GlassCard, GlassButton, GlassInput, Grid, Badge } from '../styles/glassmorphism';
 import { Modal } from '../components/Modal';
 
 const Container = styled.div`
