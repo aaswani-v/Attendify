@@ -1,0 +1,9 @@
+# Backend Python Dependencies
+fastapi
+uvicorn[standard]
+sqlalchemy
+python-multipart
+face-recognition
+numpy
+pillow
+ortools
