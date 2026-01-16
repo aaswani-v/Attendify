@@ -6,108 +6,99 @@
     font-family: 'Poppins', sans-serif;
 }
 
-/* Curved Header Section */
-/* Curved Header Section with Slide Down Animation */
-/* Curved Header Section with Slide Down Animation */
+/* Compact Header Section */
 .td-header {
     background-color: rgba(59, 117, 61, 0.95);
-    /* Slightly transparent green */
-    border-bottom-left-radius: 40px;
-    border-bottom-right-radius: 40px;
-    padding: 20px 30px;
+    border-bottom-left-radius: 24px;
+    border-bottom-right-radius: 24px;
+    padding: 0 24px;
     color: #fff;
     position: fixed;
-    /* Fixed at top */
     top: 0;
     left: 0;
     right: 0;
     z-index: 1000;
     box-shadow: 0 4px 15px rgba(59, 117, 61, 0.3);
-    height: 120px;
-    /* Fixed height to ensure sliding works predictably */
-
-    /* Animation State: Retracted */
-    transform: translateY(-90px);
-    /* Hide top 90px (visible 30px) */
-    transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-
-    /* Trigger Area */
-    cursor: pointer;
-}
-
-/* Slide down on hover */
-.td-header:hover {
-    transform: translateY(0);
-}
-
-/* App Name - Always visible at bottom left */
-.td-top-row {
-    position: absolute;
-    bottom: 10px;
-    left: 30px;
-    display: flex;
-    align-items: center;
-    z-index: 2;
-}
-
-.td-app-name {
-    font-weight: 700;
-    font-size: 1.2rem;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-/* Profile Section - Visible only when expanded (Top Right) */
-.td-profile {
-    position: absolute;
-    top: 20px;
-    right: 30px;
-    display: flex;
-    align-items: center;
-    gap: 15px;
-
-    /* Optional: Fade in/out logic if needed, but sliding off-screen is enough */
-}
-
-.td-avatar {
-    width: 60px;
     height: 60px;
-    border-radius: 50%;
-    border: 3px solid rgba(255, 255, 255, 0.3);
+}
+
+.td-header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Left side - Brand */
+.td-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.td-brand .app-logo {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
     object-fit: cover;
+    background: #fff;
+    padding: 4px;
 }
 
-.td-user-info h2 {
-    font-size: 1.2rem;
-    margin: 0;
+.td-brand .app-name {
+    font-weight: 700;
+    font-size: 1.4rem;
+    letter-spacing: -0.5px;
+}
+
+/* Right side - User Section */
+.td-user-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.td-user-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    line-height: 1.2;
+}
+
+.td-user-info .user-name {
     font-weight: 600;
+    font-size: 0.95rem;
 }
 
-.td-user-info span {
-    font-size: 0.9rem;
-    opacity: 0.9;
+.td-user-info .user-role {
+    font-size: 0.75rem;
+    opacity: 0.85;
 }
 
-.td-badge {
-    background-color: #fff;
-    color: #3B753D;
-    padding: 5px 15px;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: bold;
-    margin-top: 5px;
-    display: inline-block;
+.td-user-section .user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    transition: border-color 0.2s ease;
 }
+
+.td-user-section .user-avatar:hover {
+    border-color: #fff;
+}
+
+
+
 
 /* Main Content Area */
 .td-main-content {
     background-color: transparent;
     border-radius: 40px 40px 0 0;
-    margin-top: 100px;
-    /* Space for the "hidden" header trigger + aesthetic spacing */
+    margin-top: 80px;
     padding: 0 20px 120px 20px;
-    /* Bottom padding for nav */
     max-width: 1200px;
     margin-left: auto;
     margin-right: auto;

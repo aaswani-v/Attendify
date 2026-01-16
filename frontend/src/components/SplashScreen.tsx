@@ -30,6 +30,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
             <div className="half left-half"></div>
             <div className="half right-half"></div>
             <div className="splash-content">
+                <img src="/logo.png" alt="Attendify" className="splash-logo" />
                 <h1>Attendify</h1>
             </div>
         </div>

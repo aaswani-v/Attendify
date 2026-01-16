@@ -4,7 +4,7 @@ import './Layout.css';
 
 const Layout = () => {
     // In a real app, you'd get the role from Context or Redux
-    const role = 'faculty'; // Defaulting to faculty for dev, or toggle manually
+    const role = 'student'; // Currently showing student view
 
     return (
         <div className="dashboard-layout">

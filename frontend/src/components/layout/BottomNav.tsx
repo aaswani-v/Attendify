@@ -42,13 +42,17 @@ const BottomNav: React.FC<BottomNavProps> = ({ role }) => {
                 )}
                 {role === 'student' && (
                     <>
+                        <NavLink to="/dashboard/mark-attendance" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                            <i className='bx bx-scan'></i>
+                            <span>Mark Attendance</span>
+                        </NavLink>
                         <NavLink to="/dashboard/schedule" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                             <i className='bx bx-calendar'></i>
                             <span>Schedule</span>
                         </NavLink>
-                        <NavLink to="/dashboard/attendance" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-                            <i className='bx bx-check-circle'></i>
-                            <span>Attendance</span>
+                        <NavLink to="/dashboard/notices" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                            <i className='bx bx-bell'></i>
+                            <span>Notices</span>
                         </NavLink>
                     </>
                 )}

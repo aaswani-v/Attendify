@@ -17,27 +17,24 @@ const TeacherDashboard = () => {
     return (
         <div className="teacher-dashboard">
             <div className="td-header">
-                <div className="td-top-row">
-                    <div className="td-app-name">
-                        <i className='bx bxs-graduation'></i> Attendify
+                <div className="td-header-content">
+                    {/* Left side - Logo and App Name */}
+                    <div className="td-brand">
+                        <img src="/logo.png" alt="Attendify" className="app-logo" />
+                        <span className="app-name">Attendify</span>
                     </div>
-                </div>
 
-                <div className="td-profile-con">
-                    {/* Simplified profile header as profile is now in bottom nav mostly, 
-                        but keeping a welcome message or similar could be nice. 
-                        Design shows standard header. Keeping existing structure mostly but removing avatar if redundant.
-                        Actually, existing header had profile, let's keep it for now or simplify?
-                        Design image shows breadcrumbs/tabs at top (Dashboard, Mark Attendance...).
-                        Our layout has title "Dashboard".
-                        Let's keep the green header but maybe simplify the content inside.
-                    */}
-                    <div className="td-profile">
-                        <img src="https://ui-avatars.com/api/?name=Teacher+User&background=fff&color=3B753D" alt="Profile" className="td-avatar" />
+                    {/* Right side - User Info */}
+                    <div className="td-user-section">
                         <div className="td-user-info">
-                            <h2>Shaheen Uddin Ahmad</h2>
-                            <span>Artificial Soft</span>
+                            <span className="user-name">Shaheen Ahmad</span>
+                            <span className="user-role">Faculty</span>
                         </div>
+                        <img
+                            src="https://ui-avatars.com/api/?name=Shaheen+Ahmad&background=fff&color=3B753D&size=40"
+                            alt="Profile"
+                            className="user-avatar"
+                        />
                     </div>
                 </div>
             </div>
