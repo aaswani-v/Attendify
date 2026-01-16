@@ -17,7 +17,14 @@ class Config:
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
     
     # CORS Settings
-    CORS_ORIGINS = ["*"]  # Admin mode - no restrictions
+    # MUST be specific for allow_credentials=True
+    CORS_ORIGINS = [
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174"
+    ]
     
     # Timetable Generation
     DAYS_PER_WEEK = 5
@@ -40,6 +47,8 @@ class Config:
 
     # Biometrics
     FINGERPRINT_MATCH_THRESHOLD = 70.0 # Mock threshold implementation
+    FACE_MATCH_DISTANCE_THRESHOLD = 100.0 # Lower is better for LBPH
+    FACE_CONFIDENCE_THRESHOLD = 60.0 # Percentage (0-100)
     
     @classmethod
     def get_config(cls) -> Dict[str, Any]:

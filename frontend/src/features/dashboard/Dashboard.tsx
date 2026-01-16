@@ -2,14 +2,14 @@ import TeacherDashboard from './TeacherDashboard';
 import StudentDashboard from './StudentDashboard';
 
 const Dashboard = () => {
-    // In a real app, this comes from context/auth
-    // Change this to 'student' to see the student dashboard
-    const role = 'student';
+    // Get role from localStorage or default to student
+    const role = localStorage.getItem('userRole') || 'student';
 
-    if (role === 'faculty') {
+    if (role === 'faculty' || role === 'admin') {
         return <TeacherDashboard />;
     }
 
+    // Default student view
     return <StudentDashboard />;
 };
 

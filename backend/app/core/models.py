@@ -16,6 +16,7 @@ from app.models.timetable import Teacher, Room, Subject, ClassGroup, TimetableEn
 from app.models.face_model import FaceDetector, DATA_FACE_DIR
 from geopy.distance import geodesic
 from app.core.config import Config
+from app.core.logging import logger
 
 # Initialize global FaceDetector
 face_detector = FaceDetector()
@@ -26,15 +27,25 @@ class ModelFactory:
     @staticmethod
     def is_within_geofence(user_lat: float, user_lon: float) -> bool:
         """Check if user is within the college geofence"""
-        # If no coordinates provided (0,0), assume bypassed or not available (strict mode would return False)
+        # Strict Mode: 0,0 is rejected unless in DEBUG_MODE
         if user_lat == 0 and user_lon == 0:
-            return True 
+            if Config.DEBUG_MODE:
+                logger.warning("Geofence skipped due to 0,0 coordinates in DEBUG_MODE")
+                return True
+            logger.warning("Geofence Rejected: Coordinate 0,0 detected (likely GPS error)")
+            return False
             
         college_coords = (Config.COLLEGE_LATITUDE, Config.COLLEGE_LONGITUDE)
         user_coords = (user_lat, user_lon)
         
-        distance = geodesic(college_coords, user_coords).meters
-        return distance <= Config.GEOFENCE_RADIUS_METERS
+        try:
+            distance = geodesic(college_coords, user_coords).meters
+            if Config.DEBUG_MODE:
+                logger.info(f"Geofence Distance: {distance:.2f}m (Allowed: {Config.GEOFENCE_RADIUS_METERS}m)")
+            return distance <= Config.GEOFENCE_RADIUS_METERS
+        except ValueError as e:
+            logger.error(f"Geofence calculation error: {e}")
+            return False
 
     @staticmethod
     def create_student(name: str, roll_number: str) -> Student:
@@ -168,20 +179,25 @@ class ModelFactory:
             
             # Logic: If Confidence < 60%, require Biometric (Fingerprint)
             # confidence_score is already 0-100 logic (calculated in face_model.py)
-            is_low_confidence = confidence_score < 60
+            is_low_confidence = confidence_score < Config.FACE_CONFIDENCE_THRESHOLD
             
             # Match Logic
-            ACCEPTED = (distance < 120) or (confidence_score > 15) # Keep loose backend match, but enforce strict check for frontend
+            # LBPH Distance: Lower is better. 0 = Perfect. < 50 = Very Good. < 100 = Acceptable.
+            # Confidence: Higher is better (calculated from distance).
+            
+            ACCEPTED = (distance < Config.FACE_MATCH_DISTANCE_THRESHOLD) 
             
             if name_label != "Unknown" and ACCEPTED:
+                # Fallback Logic: If Confidence < 60%, require Biometric (Fingerprint)
                 if is_low_confidence:
+                    logger.info(f"Low Face Confidence ({confidence_score:.1f}%). Triggering Fingerprint Fallback.")
                     return {
                         "success": False,
                         "require_biometric": True,
                         "name": "Uncertain",
                         "status": "Verify",
                         "confidence": f"{confidence_score:.1f}%",
-                        "message": f"Low Confidence ({confidence_score:.1f}%). Please use Fingerprint."
+                        "message": f"Low certainty ({confidence_score:.1f}%). Please scan your fingerprint."
                     }
 
                 if name_label.isdigit():

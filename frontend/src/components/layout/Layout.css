@@ -1,11 +1,10 @@
 .dashboard-layout {
     display: flex;
-    flex-direction: column;
+    flex-direction: row; /* Changed to row for Sidebar-Content layout */
     width: 100vw;
     height: 100vh;
     overflow: hidden;
     background-color: #f5f7fa;
-    /* Light background for the whole app */
 }
 
 .dashboard-content {
@@ -14,6 +13,18 @@
     flex-direction: column;
     overflow-y: auto;
     position: relative;
+    padding-bottom: 0; /* Remove padding if using BottomNav via fixed pos */
+}
+
+/* Mobile Adjustments */
+@media (max-width: 768px) {
+    .dashboard-layout {
+        flex-direction: column;
+    }
+    
+    .content-area {
+      padding-bottom: 80px; /* Space for BottomNav on mobile */
+    }
 }
 
 .content-area {

@@ -30,6 +30,11 @@ const Sidebar: React.FC<SidebarProps> = ({ role }) => {
                                     <i className='bx bx-check-circle'></i> Attendance
                                 </NavLink>
                             </li>
+                            <li>
+                                <NavLink to="/dashboard/notices" className={({ isActive }) => isActive ? 'active' : ''}>
+                                    <i className='bx bx-bell'></i> Notices
+                                </NavLink>
+                            </li>
                         </>
                     )}
                     {(role === 'faculty' || role === 'admin') && (

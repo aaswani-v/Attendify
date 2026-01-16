@@ -4,7 +4,10 @@ Enterprise-grade REST API endpoints for timetable management
 """
 
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
-import google.generativeai as genai
+import warnings
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    import google.generativeai as genai
 import json
 import io
 from sqlalchemy.orm import Session
@@ -17,6 +20,8 @@ from app.schemas.timetable import (
 )
 from app.services.timetable_solver import TimetableSolver
 from app.core.database import get_db
+from app.core.logging import logger
+from app.core.config import config
 
 router = APIRouter(prefix="/api/timetable", tags=["Timetable"])
 
@@ -268,9 +273,7 @@ async def upload_raw_timetable(file: UploadFile = File(...)):
     filename = file.filename
     mime_type = file.content_type
 
-    print("\n" + "╔" + "═"*70 + "╗")
-    print(f"║ STARTING AI ANALYSIS: {filename.center(42)} ║")
-    print("╠" + "═"*70 + "╣")
+    logger.info(f"STARTING AI ANALYSIS: {filename}")
 
     try:
         # Initialize Gemini
@@ -318,19 +321,17 @@ async def upload_raw_timetable(file: UploadFile = File(...)):
 
         parsed_data = json.loads(raw_text)
 
-        # Print systematic order to terminal
-        print("║ SUCCESSFULLY PARSED DATA (SYSTEMATIC JSON):")
-        print("╟" + "─"*70 + "╢")
-        print(json.dumps(parsed_data, indent=2))
-        print("╟" + "─"*70 + "╢")
-        print(f"║ Summary: Extracted {len(parsed_data.get('schedule', []))} class slots.")
+        # Log systematic order
+        logger.info("SUCCESSFULLY PARSED DATA (SYSTEMATIC JSON):")
+        logger.debug(json.dumps(parsed_data, indent=2))
+        logger.info(f"Summary: Extracted {len(parsed_data.get('schedule', []))} class slots.")
         
     except Exception as e:
-        print(f"║ CRITICAL AI ERROR: {str(e).center(50)} ║")
+        logger.error(f"CRITICAL AI ERROR: {str(e)}")
         raise HTTPException(500, f"AI Parsing failed: {str(e)}")
     
     finally:
-        print("╚" + "═"*70 + "╝\n")
+        logger.info("AI Analysis Finished")
 
     return {
         "status": "success",

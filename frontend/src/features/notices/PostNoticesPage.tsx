@@ -34,6 +34,10 @@ const PostNoticesPage = () => {
     const [content, setContent] = useState('');
     const [notices, setNotices] = useState<Notice[]>([]);
     const [loading, setLoading] = useState(false);
+    
+    // Get role from storage
+    const role = localStorage.getItem('userRole') || 'student';
+    const canPost = role === 'admin' || role === 'faculty';
 
     useEffect(() => {
         fetchNotices();
@@ -82,8 +86,9 @@ const PostNoticesPage = () => {
 
     return (
         <Container>
-            <h1>📢 Post Notices Interface</h1>
+            <h1>{canPost ? '📢 Post Notices Interface' : '📢 Campus Notices'}</h1>
             
+            {canPost && (
             <GlassCard>
                 <form onSubmit={handleSubmit}>
                     <div style={{ marginBottom: '16px' }}>
@@ -118,9 +123,10 @@ const PostNoticesPage = () => {
                     </GlassButton>
                 </form>
             </GlassCard>
+            )}
 
             <NoticeList>
-                <h2>Recent Notices</h2>
+                <h2>{canPost ? 'Recent Notices' : 'Latest Announcements'}</h2>
                 {notices.length === 0 ? <p style={{opacity:0.6}}>No notices posted yet.</p> : (
                     notices.map(notice => (
                         <NoticeCard key={notice.id}>
@@ -128,12 +134,14 @@ const PostNoticesPage = () => {
                             <p>{notice.content}</p>
                             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                                 <span>Posted by {notice.author} on {new Date(notice.date).toLocaleDateString()}</span>
+                                {canPost && (
                                 <button 
                                     onClick={() => handleDelete(notice.id)}
                                     style={{background:'transparent', border:'none', color:'#ff6b6b', cursor:'pointer'}}
                                 >
                                     🗑️ Delete
                                 </button>
+                                )}
                             </div>
                         </NoticeCard>
                     ))
