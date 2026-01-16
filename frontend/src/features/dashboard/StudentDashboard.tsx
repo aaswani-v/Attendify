@@ -107,22 +107,6 @@ const StudentDashboard = () => {
 
             {/* Main Content */}
             <div className="sd-main-content">
-                {/* Top Navigation Pills */}
-                <div className="sd-nav-pills">
-                    <button className="nav-pill active">
-                        <i className='bx bxs-dashboard'></i>
-                        Dashboard
-                    </button>
-                    <button className="nav-pill">
-                        <i className='bx bx-calendar'></i>
-                        Schedule
-                    </button>
-                    <button className="nav-pill">
-                        <i className='bx bx-user'></i>
-                        Profile
-                    </button>
-                </div>
-
                 {/* Welcome Section */}
                 <div className="sd-welcome">
                     <h1>Welcome back, {studentName.split(' ')[0]}!</h1>
