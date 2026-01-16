@@ -3,7 +3,7 @@ import pickle
 import io
 from PIL import Image
 from sqlalchemy.orm import Session
-from models import Student
+from models.attendance import Student
 
 def get_encoding(image_file) -> bytes:
     # Read the uploaded file as bytes

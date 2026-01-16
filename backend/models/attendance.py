@@ -1,9 +1,7 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, LargeBinary, ForeignKey
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker, relationship
+from sqlalchemy import Column, Integer, String, DateTime, LargeBinary, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
-
-class Base(DeclarativeBase):
-    pass
+from database import Base
 
 class Student(Base):
     __tablename__ = 'students'
@@ -26,8 +24,3 @@ class AttendanceLog(Base):
     
     # Relationship
     student: Mapped["Student"] = relationship("Student", back_populates="attendance_logs")
-
-# Database setup
-engine = create_engine('sqlite:///attendance.db')
-Base.metadata.create_all(engine)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

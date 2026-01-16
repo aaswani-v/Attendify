@@ -1,6 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from sqlalchemy.orm import Session
-from models import SessionLocal, Student, AttendanceLog
+from database import SessionLocal
+from models.attendance import Student, AttendanceLog
 from services import get_encoding, verify_identity
 
 app = FastAPI()
