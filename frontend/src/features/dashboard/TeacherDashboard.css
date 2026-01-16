@@ -1,0 +1,141 @@
+.teacher-dashboard {
+    /* Counteract the padding from the main Layout to create full-width look */
+    margin: -30px;
+    background-color: #fcebeb00;
+    /* Transparent or match bg */
+    min-height: calc(100vh - 60px);
+    /* Adjust based on topbar */
+    font-family: 'Poppins', sans-serif;
+}
+
+/* Curved Header Section */
+.td-header {
+    background-color: #3B753D;
+    /* Green Theme */
+    border-bottom-left-radius: 40px;
+    border-bottom-right-radius: 40px;
+    padding: 30px 20px 60px 20px;
+    /* Extra bottom padding for overlap */
+    color: #fff;
+    position: relative;
+    box-shadow: 0 4px 15px rgba(59, 117, 61, 0.3);
+}
+
+.td-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.td-app-name {
+    font-weight: 600;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.td-profile {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.td-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    object-fit: cover;
+}
+
+.td-user-info h2 {
+    font-size: 1.2rem;
+    margin: 0;
+    font-weight: 600;
+}
+
+.td-user-info span {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+.td-badge {
+    background-color: #fff;
+    color: #3B753D;
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    margin-top: 5px;
+    display: inline-block;
+}
+
+/* Grid Layout */
+.td-grid-container {
+    padding: 0 20px 40px 20px;
+    margin-top: -30px;
+    /* Pull up to overlap header */
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 20px;
+    max-width: 1000px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.td-card {
+    background: #fff;
+    border-radius: 20px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    cursor: pointer;
+    min-height: 160px;
+}
+
+.td-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+}
+
+.td-icon-con {
+    width: 60px;
+    height: 60px;
+    background-color: #f0f7f1;
+    /* Very light green */
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 15px;
+    transition: background-color 0.3s ease;
+}
+
+.td-card:hover .td-icon-con {
+    background-color: #e0efe2;
+}
+
+.td-icon-con i {
+    font-size: 28px;
+    color: #3B753D;
+}
+
+.td-card h3 {
+    font-size: 1rem;
+    color: #333;
+    font-weight: 500;
+    margin: 0;
+}
+
+@media (max-width: 768px) {
+    .td-grid-container {
+        grid-template-columns: 1fr 1fr;
+    }
+}

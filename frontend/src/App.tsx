@@ -1,61 +1,45 @@
-/**
- * Main App Component
- * Unified Enterprise System - Attendance + Timetable
- */
+import { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import AuthPage from './features/auth/AuthPage';
+import SplashScreen from './components/SplashScreen';
+import Layout from './components/layout/Layout';
+import Dashboard from './features/dashboard/Dashboard';
+import SchedulePage from './features/schedule/SchedulePage';
+import StudentAttendancePage from './features/attendance/StudentAttendancePage';
+import MarkAttendancePage from './features/attendance/MarkAttendancePage';
+import PostNoticesPage from './features/notices/PostNoticesPage';
+import ReportsPage from './features/reports/ReportsPage';
+import AnalyticsDashboard from './features/analytics/AnalyticsDashboard';
+import ProfilePage from './features/profile/ProfilePage';
+import './App.css';
 
-import React, { useState, useEffect } from 'react';
-import styled from 'styled-components';
-import { Sidebar } from './components/Sidebar';
-import { Dashboard } from './pages/Dashboard';
-import { TimetableGrid } from './pages/TimetableGrid';
-import { ResourceManagement } from './pages/ResourceManagement';
-import { AttendanceKiosk } from './pages/AttendanceKiosk';
-import { AttendanceLogs } from './pages/AttendanceLogs';
-import { useResources } from './hooks/useResources';
-import './styles/global.css';
-
-const AppContainer = styled.div`
-  display: flex;
-  min-height: 100vh;
-`;
-
-const MainContent = styled.div`
-  flex: 1;
-  margin-left: 250px;
-  overflow-y: auto;
-`;
-
-const App: React.FC = () => {
-  const [activeView, setActiveView] = useState('dashboard');
-  const { classGroups, fetchAllResources } = useResources();
-
-  useEffect(() => {
-    fetchAllResources();
-  }, [fetchAllResources]);
-
-  const renderView = () => {
-    switch (activeView) {
-      case 'dashboard':
-        return <Dashboard onNavigate={setActiveView} />;
-      case 'timetable':
-        return <TimetableGrid classGroups={classGroups} />;
-      case 'resources':
-        return <ResourceManagement />;
-      case 'attendance':
-        return <AttendanceKiosk />;
-      case 'logs':
-        return <AttendanceLogs />;
-      default:
-        return <Dashboard onNavigate={setActiveView} />;
-    }
-  };
+function App() {
+  const [loading, setLoading] = useState(true);
 
   return (
-    <AppContainer>
-      <Sidebar activeView={activeView} onNavigate={setActiveView} />
-      <MainContent>{renderView()}</MainContent>
-    </AppContainer>
+    <>
+      {loading && <SplashScreen onFinish={() => setLoading(false)} />}
+      <Router>
+        <Routes>
+          <Route path="/" element={<AuthPage />} />
+          <Route path="/login" element={<AuthPage />} />
+
+          {/* Dashboard Routes nested under 'Layout' */}
+          <Route path="/dashboard" element={<Layout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="schedule" element={<SchedulePage />} />
+            <Route path="attendance" element={<StudentAttendancePage />} />
+            <Route path="mark-attendance" element={<MarkAttendancePage />} />
+            <Route path="notices" element={<PostNoticesPage />} />
+            <Route path="reports" element={<ReportsPage />} />
+            <Route path="analytics" element={<AnalyticsDashboard />} />
+            <Route path="profile" element={<ProfilePage />} />
+          </Route>
+
+        </Routes>
+      </Router>
+    </>
   );
-};
+}
 
 export default App;
