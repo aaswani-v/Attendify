@@ -153,7 +153,7 @@ body.dark-mode .bottom-nav {
 }
 
 body.dark-mode .nav-item {
-    color: var(--text-secondary);
+    color: var(--text-primary, #f1f5f9);
 }
 
 body.dark-mode .nav-item:hover {

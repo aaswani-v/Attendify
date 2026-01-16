@@ -6,8 +6,8 @@ import Layout from './components/layout/Layout';
 import Dashboard from './features/dashboard/Dashboard';
 import SchedulePage from './features/schedule/SchedulePage';
 import StudentAttendancePage from './features/attendance/StudentAttendancePage';
-import MarkAttendancePage from './features/attendance/MarkAttendancePage';
-import PostNoticesPage from './features/notices/PostNoticesPage';
+import StudentMarkAttendance from './features/attendance/StudentMarkAttendance';
+import StudentNotices from './features/notices/StudentNotices';
 import ReportsPage from './features/reports/ReportsPage';
 import AnalyticsDashboard from './features/analytics/AnalyticsDashboard';
 import ProfilePage from './features/profile/ProfilePage';
@@ -30,9 +30,9 @@ function App() {
             <Route index element={<Dashboard />} />
             <Route path="schedule" element={<SchedulePage />} />
             <Route path="attendance" element={<StudentAttendancePage />} />
-            <Route path="mark-attendance" element={<MarkAttendancePage />} />
+            <Route path="mark-attendance" element={<StudentMarkAttendance />} />
             <Route path="students" element={<StudentsPage />} />
-            <Route path="notices" element={<PostNoticesPage />} />
+            <Route path="notices" element={<StudentNotices />} />
             <Route path="reports" element={<ReportsPage />} />
             <Route path="analytics" element={<AnalyticsDashboard />} />
             <Route path="profile" element={<ProfilePage />} />
