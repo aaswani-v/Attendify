@@ -1,11 +1,11 @@
 .dashboard-layout {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    /* Side by side for desktop */
     width: 100vw;
     height: 100vh;
     overflow: hidden;
     background-color: #f5f7fa;
-    /* Light background for the whole app */
 }
 
 .dashboard-content {
@@ -13,17 +13,29 @@
     display: flex;
     flex-direction: column;
     overflow-y: auto;
+    /* Scrollable content area */
     position: relative;
+    height: 100%;
 }
 
 .content-area {
     padding: 20px;
     padding-bottom: 100px;
-    /* Space for bottom nav */
-    flex: 1;
     max-width: 1200px;
     margin: 0 auto;
     width: 100%;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .dashboard-layout {
+        flex-direction: column;
+    }
+
+    .dashboard-content {
+        padding-bottom: 70px;
+        /* Space for bottom nav */
+    }
 }
 
 /* Remove old sidebar/topbar styles if they interfere,
