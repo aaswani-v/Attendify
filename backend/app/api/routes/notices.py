@@ -17,7 +17,7 @@ class NoticeResponse(NoticeBase):
     id: int
     date: datetime
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 @router.post("/", response_model=NoticeResponse)
 def create_notice(notice: NoticeBase, db: Session = Depends(get_db)):

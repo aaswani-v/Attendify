@@ -1,10 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
-import { GlassCard } from '../../styles/glassmorphism';
+import { useNavigate } from 'react-router-dom';
+import { GlassCard, GlassButton } from '../../styles/glassmorphism';
 import { API_ENDPOINTS } from '../../utils/api';
 
 const Container = styled.div`
   padding: 32px;
+`;
+
+const ActionsHeader = styled.div`
+  display: flex;
+  gap: 16px;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
 `;
 
 const LogItem = styled(GlassCard)`
@@ -17,6 +25,12 @@ const LogItem = styled(GlassCard)`
 
 const StudentAttendancePage = () => {
     const [logs, setLogs] = useState<any[]>([]);
+    const navigate = useNavigate();
+    
+    // Get user role
+    const role = localStorage.getItem('userRole') || 'student';
+    const isStudent = role === 'student';
+    const isStaff = role === 'admin' || role === 'faculty';
 
     useEffect(() => {
         // ideally fetch logs for *this* student. 
@@ -29,8 +43,30 @@ const StudentAttendancePage = () => {
 
     return (
         <Container>
-            <h1>📅 My Attendance History</h1>
-            <div style={{ marginTop: '24px' }}>
+            <h1>📅 Attendance Management</h1>
+            
+            <ActionsHeader>
+                {/* Available for Everyone (Context: Student marks self, Staff marks others manually or supervises) */}
+                <GlassButton 
+                    onClick={() => navigate('/dashboard/mark-attendance')}
+                    style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' }}
+                >
+                    📷 Mark Attendance {isStudent && "(Self)"}
+                </GlassButton>
+
+                {/* Only for Staff */}
+                {isStaff && (
+                    <GlassButton 
+                        onClick={() => navigate('/dashboard/register-student')}
+                        style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}
+                    >
+                        👤 Register New Student
+                    </GlassButton>
+                )}
+            </ActionsHeader>
+
+            <h2>Attendance History</h2>
+            <div style={{ marginTop: '16px' }}>
                 {logs.length === 0 ? <p>No records found.</p> : (
                     logs.map((log: any) => (
                         <LogItem key={log.id}>

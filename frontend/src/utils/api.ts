@@ -35,6 +35,11 @@ export const API_ENDPOINTS = {
   
   GET_RESOURCES: `${API_BASE_URL}/api/timetable/resources`,
   
+  // Notices
+  GET_NOTICES: `${API_BASE_URL}/api/notices/`,
+  CREATE_NOTICE: `${API_BASE_URL}/api/notices/`,
+  DELETE_NOTICE: (id: number) => `${API_BASE_URL}/api/notices/${id}`,
+  
   // System
   SEED_DATABASE: `${API_BASE_URL}/api/seed`,
   GET_CONFIG: `${API_BASE_URL}/api/config`,

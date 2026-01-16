@@ -8,6 +8,12 @@
     max-width: 90%;
 }
 
+@media (min-width: 769px) {
+    .bottom-nav-container {
+        display: none;
+    }
+}
+
 .bottom-nav {
     display: flex;
     align-items: center;

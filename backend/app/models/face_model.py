@@ -15,6 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 import pickle
+from app.core.logging import logger
 
 # Path to store face data and models
 DATA_DIR = Path(__file__).parent
@@ -62,9 +63,9 @@ class FaceDetector:
                     self.known_face_labels = data.get('labels', {})
                     self.label_counter = data.get('counter', 0)
                 self.is_trained = True
-                print("[INFO] Loaded pre-trained face model from disk.")
+                logger.info("Loaded pre-trained face model from disk.")
             except Exception as e:
-                print(f"[WARNING] Failed to load model from disk: {e}. Retraining...")
+                logger.warning(f"Failed to load model from disk: {e}. Retraining...")
                 self.train_model()
         else:
             self.train_model()
@@ -78,9 +79,9 @@ class FaceDetector:
                     'labels': self.known_face_labels,
                     'counter': self.label_counter
                 }, f)
-            print("[INFO] Saved trained model to disk.")
+            logger.info("Saved trained model to disk.")
         except Exception as e:
-            print(f"[ERROR] Failed to save model: {e}")
+            logger.error(f"Failed to save model: {e}")
 
     def preprocess_face(self, face_img: np.ndarray) -> np.ndarray:
         """
@@ -107,7 +108,7 @@ class FaceDetector:
         """
         Load all known faces and train the recognizer.
         """
-        print("[INFO] Starting model training...")
+        logger.info("Starting model training...")
         self.known_face_labels = {}
         self.label_counter = 0
         faces = []
@@ -137,7 +138,7 @@ class FaceDetector:
                 )
                 
                 if len(face_rects) == 0:
-                    print(f"[WARNING] Skipped {image_path.name} - No face detected")
+                    logger.warning(f"Skipped {image_path.name} - No face detected")
                     continue
                 
                 # Use the largest face
@@ -170,16 +171,16 @@ class FaceDetector:
                 loaded_count += 1
                     
             except Exception as e:
-                print(f"[ERROR] Error processing {image_path.name}: {e}")
+                logger.error(f"Error processing {image_path.name}: {e}")
         
         if faces:
             self.recognizer.train(faces, np.array(labels))
             self.is_trained = True
             self._save_model_to_disk()
-            print(f"[INFO] Training complete. Trained on {loaded_count} images.")
+            logger.info(f"Training complete. Trained on {loaded_count} images.")
         else:
             self.is_trained = False
-            print("[INFO] No valid faces found to train on.")
+            logger.info("No valid faces found to train on.")
         
         return loaded_count
     
@@ -227,11 +228,11 @@ class FaceDetector:
             
             name = self.known_face_labels.get(label, "Unknown")
             
-            print(f"[DEBUG] Result: ID={name}, Dist={distance:.2f}, Conf={confidence:.1f}%")
+            logger.debug(f"Result: ID={name}, Dist={distance:.2f}, Conf={confidence:.1f}%")
             return name, distance, confidence
             
         except Exception as e:
-            print(f"[ERROR] Recognition error: {e}")
+            logger.error(f"Recognition error: {e}")
             return "Unknown", 999.0, 0.0
 
     def load_known_faces(self):
