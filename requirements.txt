@@ -1,13 +1,22 @@
 # Backend Python Dependencies
+
+# Core FastAPI
 fastapi
 uvicorn[standard]
 sqlalchemy
 python-multipart
+
+# Face Recognition (Attendance Module)
 face-recognition
 numpy
-pillow
-ortools
 opencv-python
 opencv-contrib-python
-python-multipart
-sqlalchemy
+
+# Timetable Generation (OR-Tools Solver)
+ortools
+pillow
+
+# Timetable Parsing (OCR + Groq)
+pytesseract
+groq
+python-dotenv

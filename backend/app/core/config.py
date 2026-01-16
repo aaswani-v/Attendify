@@ -5,11 +5,16 @@ Centralized configuration for all backend services
 
 import os
 from typing import Dict, Any
+from dotenv import load_dotenv
+
+# Load .env file
+load_dotenv()
 
 class Config:
     # Database
     DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///attendance.db")
     DEBUG_MODE = os.getenv("DEBUG_MODE", "false").lower() == "true"
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
     
     # CORS Settings
     CORS_ORIGINS = ["*"]  # Admin mode - no restrictions
