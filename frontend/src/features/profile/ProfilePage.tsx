@@ -1,8 +1,31 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './ProfilePage.css';
 
 const ProfilePage = () => {
+    const navigate = useNavigate();
     // In a real app, you'd get the role and user data from context
     const role = 'student';
+
+    const [isDarkMode, setIsDarkMode] = useState(false);
+
+    useEffect(() => {
+        // Check if dark mode is already active
+        if (document.body.classList.contains('dark-mode')) {
+            setIsDarkMode(true);
+        }
+    }, []);
+
+    const toggleTheme = () => {
+        document.body.classList.toggle('dark-mode');
+        setIsDarkMode(!isDarkMode);
+    };
+
+    const handleLogout = () => {
+        // Logic to clear session/local storage if needed
+        // localStorage.clear();
+        navigate('/');
+    };
 
     const user = {
         name: "Alisha Khan",
@@ -62,11 +85,15 @@ const ProfilePage = () => {
                             <span>Notification Preferences</span>
                             <i className='bx bx-chevron-right'></i>
                         </button>
+                        <button className="setting-btn" onClick={toggleTheme}>
+                            <span>{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
+                            <i className={`bx ${isDarkMode ? 'bx-sun' : 'bx-moon'}`}></i>
+                        </button>
                         <button className="setting-btn">
                             <span>Privacy Settings</span>
                             <i className='bx bx-chevron-right'></i>
                         </button>
-                        <button className="setting-btn danger">
+                        <button className="setting-btn danger" onClick={handleLogout}>
                             <span>Log Out</span>
                             <i className='bx bx-log-out'></i>
                         </button>

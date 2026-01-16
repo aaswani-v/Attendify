@@ -12,58 +12,6 @@ const StudentDashboard = () => {
         rateChange: 2.3
     };
 
-    // Today's schedule - lectures for the day
-    const todaySchedule = [
-        {
-            time: '9:00 AM - 10:00 AM',
-            subject: 'Mathematics',
-            professor: 'Dr. Rajesh Kumar',
-            room: 'Room 201',
-            status: 'completed',
-            attended: true
-        },
-        {
-            time: '10:30 AM - 11:30 AM',
-            subject: 'Physics',
-            professor: 'Prof. Anita Sharma',
-            room: 'Lab 102',
-            status: 'completed',
-            attended: true
-        },
-        {
-            time: '12:00 PM - 1:00 PM',
-            subject: 'Chemistry',
-            professor: 'Dr. Suresh Patel',
-            room: 'Room 305',
-            status: 'completed',
-            attended: false
-        },
-        {
-            time: '2:00 PM - 3:00 PM',
-            subject: 'English',
-            professor: 'Ms. Priya Singh',
-            room: 'Room 101',
-            status: 'ongoing',
-            attended: null
-        },
-        {
-            time: '3:30 PM - 4:30 PM',
-            subject: 'Computer Science',
-            professor: 'Dr. Amit Verma',
-            room: 'Lab 201',
-            status: 'upcoming',
-            attended: null
-        },
-        {
-            time: '5:00 PM - 6:00 PM',
-            subject: 'History',
-            professor: 'Prof. Meena Iyer',
-            room: 'Room 402',
-            status: 'upcoming',
-            attended: null
-        },
-    ];
-
     // Recent attendance records
     const recentAttendance = [
         { subject: 'Mathematics', date: '2026-01-16', time: '9:00 AM', status: 'present' },
@@ -72,15 +20,6 @@ const StudentDashboard = () => {
         { subject: 'English', date: '2026-01-14', time: '10:00 AM', status: 'present' },
         { subject: 'Computer Science', date: '2026-01-14', time: '1:00 PM', status: 'present' },
     ];
-
-    const getStatusLabel = (status: string) => {
-        switch (status) {
-            case 'completed': return 'Completed';
-            case 'ongoing': return 'Ongoing';
-            case 'upcoming': return 'Upcoming';
-            default: return status;
-        }
-    };
 
     return (
         <div className="student-dashboard">
@@ -138,70 +77,6 @@ const StudentDashboard = () => {
                         </div>
                         <div className="stat-value">{stats.attendanceRate}%</div>
                         <div className="stat-sub positive">+{stats.rateChange}% from last month</div>
-                    </div>
-                </div>
-
-                {/* Today's Schedule Section */}
-                <div className="sd-card schedule-card">
-                    <div className="card-header">
-                        <div className="header-with-icon">
-                            <i className='bx bx-calendar-event'></i>
-                            <div>
-                                <h3>Today's Schedule</h3>
-                                <p>Your lectures for today - Thursday, Jan 16</p>
-                            </div>
-                        </div>
-                        <span className="schedule-count">{todaySchedule.length} lectures</span>
-                    </div>
-                    <div className="schedule-list">
-                        {todaySchedule.map((lecture, index) => (
-                            <div className={`schedule-item ${lecture.status}`} key={index}>
-                                <div className="schedule-time-block">
-                                    <span className="schedule-time">{lecture.time}</span>
-                                    <span className={`schedule-status ${lecture.status}`}>
-                                        {getStatusLabel(lecture.status)}
-                                    </span>
-                                </div>
-                                <div className="schedule-details">
-                                    <div className="schedule-main">
-                                        <span className="schedule-subject">{lecture.subject}</span>
-                                        <span className="schedule-room">
-                                            <i className='bx bx-map-pin'></i>
-                                            {lecture.room}
-                                        </span>
-                                    </div>
-                                    <span className="schedule-professor">
-                                        <i className='bx bx-user'></i>
-                                        {lecture.professor}
-                                    </span>
-                                </div>
-                                <div className="attendance-indicator">
-                                    {lecture.status === 'completed' && (
-                                        <div className={`indicator-dot ${lecture.attended ? 'present' : 'absent'}`}>
-                                            <i className={`bx ${lecture.attended ? 'bx-check' : 'bx-x'}`}></i>
-                                        </div>
-                                    )}
-                                    {lecture.status === 'ongoing' && (
-                                        <div className="indicator-dot ongoing pulse">
-                                            <i className='bx bx-radio-circle-marked'></i>
-                                        </div>
-                                    )}
-                                    {lecture.status === 'upcoming' && (
-                                        <div className="indicator-dot upcoming">
-                                            <i className='bx bx-time-five'></i>
-                                        </div>
-                                    )}
-                                    <span className="indicator-label">
-                                        {lecture.status === 'completed'
-                                            ? (lecture.attended ? 'Present' : 'Absent')
-                                            : lecture.status === 'ongoing'
-                                                ? 'Mark Now'
-                                                : 'Pending'
-                                        }
-                                    </span>
-                                </div>
-                            </div>
-                        ))}
                     </div>
                 </div>
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import './StudentMarkAttendance.css';
 
 type AttendanceMethod = 'fingerprint' | 'radar' | 'facial' | null;
@@ -7,20 +7,74 @@ type VerificationStatus = 'idle' | 'scanning' | 'verifying' | 'success' | 'error
 const StudentMarkAttendance = () => {
     const [selectedMethod, setSelectedMethod] = useState<AttendanceMethod>(null);
     const [status, setStatus] = useState<VerificationStatus>('idle');
+    const verificationSectionRef = useRef<HTMLDivElement>(null);
 
-    // Mock current lecture
-    const currentLecture = {
-        subject: 'Computer Science',
-        professor: 'Dr. Amit Verma',
-        time: '2:00 PM - 3:00 PM',
-        room: 'Lab 201'
-    };
+    // Today's schedule - lectures for the day (Moved from Dashboard)
+    const todaySchedule = [
+        {
+            time: '9:00 AM - 10:00 AM',
+            subject: 'Mathematics',
+            professor: 'Dr. Rajesh Kumar',
+            room: 'Room 201',
+            status: 'completed',
+            attended: true
+        },
+        {
+            time: '10:30 AM - 11:30 AM',
+            subject: 'Physics',
+            professor: 'Prof. Anita Sharma',
+            room: 'Lab 102',
+            status: 'completed',
+            attended: true
+        },
+        {
+            time: '12:00 PM - 1:00 PM',
+            subject: 'Chemistry',
+            professor: 'Dr. Suresh Patel',
+            room: 'Room 305',
+            status: 'completed',
+            attended: false
+        },
+        {
+            time: '2:00 PM - 3:00 PM',
+            subject: 'English',
+            professor: 'Ms. Priya Singh',
+            room: 'Room 101',
+            status: 'ongoing',
+            attended: null
+        },
+        {
+            time: '3:30 PM - 4:30 PM',
+            subject: 'Computer Science',
+            professor: 'Dr. Amit Verma',
+            room: 'Lab 201',
+            status: 'upcoming',
+            attended: null
+        },
+        {
+            time: '5:00 PM - 6:00 PM',
+            subject: 'History',
+            professor: 'Prof. Meena Iyer',
+            room: 'Room 402',
+            status: 'upcoming',
+            attended: null
+        },
+    ];
 
     // Mock verification data
     const verificationChecks = {
         geofence: true,
         cctv: null as boolean | null,
         biometric: null as boolean | null
+    };
+
+    const getStatusLabel = (status: string) => {
+        switch (status) {
+            case 'completed': return 'Completed';
+            case 'ongoing': return 'Ongoing';
+            case 'upcoming': return 'Upcoming';
+            default: return status;
+        }
     };
 
     const handleMethodSelect = (method: AttendanceMethod) => {
@@ -43,6 +97,10 @@ const StudentMarkAttendance = () => {
                 }
             }, 2000);
         }, 1500);
+    };
+
+    const handleMarkClick = () => {
+        verificationSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
     return (
@@ -69,27 +127,79 @@ const StudentMarkAttendance = () => {
             <div className="ma-main-content">
                 <div className="ma-page-header">
                     <h1>Mark Attendance</h1>
-                    <p>Choose a verification method to mark your attendance</p>
+                    <p>Select a class and verify your presence</p>
                 </div>
 
-                {/* Current Lecture Info */}
-                <div className="current-lecture-card">
-                    <div className="lecture-badge">
-                        <i className='bx bx-radio-circle-marked'></i>
-                        Currently Active
-                    </div>
-                    <div className="lecture-info">
-                        <h3>{currentLecture.subject}</h3>
-                        <div className="lecture-details">
-                            <span><i className='bx bx-user'></i> {currentLecture.professor}</span>
-                            <span><i className='bx bx-time-five'></i> {currentLecture.time}</span>
-                            <span><i className='bx bx-map-pin'></i> {currentLecture.room}</span>
+                {/* Today's Schedule Section (Moved here) */}
+                <div className="sd-card schedule-card" style={{ marginBottom: '30px' }}>
+                    <div className="card-header">
+                        <div className="header-with-icon">
+                            <i className='bx bx-calendar-event'></i>
+                            <div>
+                                <h3>Today's Schedule</h3>
+                                <p>Select your ongoing class to mark attendance</p>
+                            </div>
                         </div>
+                        <span className="schedule-count">{todaySchedule.length} lectures</span>
+                    </div>
+                    <div className="schedule-list">
+                        {todaySchedule.map((lecture, index) => (
+                            <div className={`schedule-item ${lecture.status}`} key={index}>
+                                <div className="schedule-time-block">
+                                    <span className="schedule-time">{lecture.time}</span>
+                                    <span className={`schedule-status ${lecture.status}`}>
+                                        {getStatusLabel(lecture.status)}
+                                    </span>
+                                </div>
+                                <div className="schedule-details">
+                                    <div className="schedule-main">
+                                        <span className="schedule-subject">{lecture.subject}</span>
+                                        <span className="schedule-room">
+                                            <i className='bx bx-map-pin'></i>
+                                            {lecture.room}
+                                        </span>
+                                    </div>
+                                    <span className="schedule-professor">
+                                        <i className='bx bx-user'></i>
+                                        {lecture.professor}
+                                    </span>
+                                </div>
+                                <div className="attendance-indicator">
+                                    {lecture.status === 'completed' && (
+                                        <div className={`indicator-dot ${lecture.attended ? 'present' : 'absent'}`}>
+                                            <i className={`bx ${lecture.attended ? 'bx-check' : 'bx-x'}`}></i>
+                                        </div>
+                                    )}
+                                    {lecture.status === 'ongoing' && (
+                                        <div
+                                            className="indicator-dot ongoing pulse"
+                                            style={{ cursor: 'pointer' }}
+                                            onClick={handleMarkClick}
+                                        >
+                                            <i className='bx bx-radio-circle-marked'></i>
+                                        </div>
+                                    )}
+                                    {lecture.status === 'upcoming' && (
+                                        <div className="indicator-dot upcoming">
+                                            <i className='bx bx-time-five'></i>
+                                        </div>
+                                    )}
+                                    <span className="indicator-label">
+                                        {lecture.status === 'completed'
+                                            ? (lecture.attended ? 'Present' : 'Absent')
+                                            : lecture.status === 'ongoing'
+                                                ? 'Mark Now'
+                                                : 'Pending'
+                                        }
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
 
                 {/* Verification Methods */}
-                <div className="methods-section">
+                <div ref={verificationSectionRef} className="methods-section">
                     <h2>Select Verification Method</h2>
                     <div className="methods-grid">
                         {/* Fingerprint Option */}
@@ -101,17 +211,11 @@ const StudentMarkAttendance = () => {
                                 <i className='bx bx-fingerprint'></i>
                             </div>
                             <h3>Fingerprint</h3>
-                            <p>Scan your fingerprint for biometric verification</p>
+                            <p>Scan your finger on the device to verify your identity locally.</p>
                             <div className="method-checks">
-                                <span className="check-item">
-                                    <i className='bx bx-check-circle'></i> Biometric Scan
-                                </span>
-                                <span className="check-item">
-                                    <i className='bx bx-check-circle'></i> Geofence Check
-                                </span>
-                                <span className="check-item">
-                                    <i className='bx bx-check-circle'></i> CCTV Verification
-                                </span>
+                                <div className="check-item"><i className='bx bx-check-circle'></i> Biometric Scan</div>
+                                <div className="check-item"><i className='bx bx-check-circle'></i> Geofence Check</div>
+                                <div className="check-item"><i className='bx bx-check-circle'></i> CCTV Verification</div>
                             </div>
                         </div>
 
@@ -121,20 +225,14 @@ const StudentMarkAttendance = () => {
                             onClick={() => handleMethodSelect('radar')}
                         >
                             <div className="method-icon radar">
-                                <i className='bx bx-broadcast'></i>
+                                <i className='bx bx-radar'></i>
                             </div>
                             <h3>Radar</h3>
-                            <p>Connect to teacher's proximity radar</p>
+                            <p>Use your device's proximity sensor to detect the teacher's signal.</p>
                             <div className="method-checks">
-                                <span className="check-item">
-                                    <i className='bx bx-check-circle'></i> Teacher's Radar
-                                </span>
-                                <span className="check-item">
-                                    <i className='bx bx-check-circle'></i> Bluetooth Range
-                                </span>
-                                <span className="check-item">
-                                    <i className='bx bx-check-circle'></i> Auto Detection
-                                </span>
+                                <div className="check-item"><i className='bx bx-check-circle'></i> Teacher's Radar</div>
+                                <div className="check-item"><i className='bx bx-check-circle'></i> Bluetooth Range</div>
+                                <div className="check-item"><i className='bx bx-check-circle'></i> Auto Detection</div>
                             </div>
                         </div>
 
@@ -144,20 +242,14 @@ const StudentMarkAttendance = () => {
                             onClick={() => handleMethodSelect('facial')}
                         >
                             <div className="method-icon facial">
-                                <i className='bx bx-scan'></i>
+                                <i className='bx bx-face'></i>
                             </div>
-                            <h3>Face Recognition</h3>
-                            <p>Use facial recognition with location check</p>
+                            <h3>Facial Recognition</h3>
+                            <p>Verify your attendance by scanning your face with the camera.</p>
                             <div className="method-checks">
-                                <span className="check-item">
-                                    <i className='bx bx-check-circle'></i> Face Scan
-                                </span>
-                                <span className="check-item">
-                                    <i className='bx bx-check-circle'></i> Geofence Check
-                                </span>
-                                <span className="check-item">
-                                    <i className='bx bx-check-circle'></i> Liveness Detection
-                                </span>
+                                <div className="check-item"><i className='bx bx-check-circle'></i> Face Scan</div>
+                                <div className="check-item"><i className='bx bx-check-circle'></i> Geofence Check</div>
+                                <div className="check-item"><i className='bx bx-check-circle'></i> Liveness Detection</div>
                             </div>
                         </div>
                     </div>
