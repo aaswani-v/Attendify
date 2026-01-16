@@ -6,8 +6,13 @@ Enterprise-grade solver with hard constraints and optimization objectives
 from ortools.sat.python import cp_model
 from typing import List, Dict, Any, Tuple
 from sqlalchemy.orm import Session
+<<<<<<< HEAD:backend/app/services/timetable_solver.py
 from app.models.timetable import Teacher, Room, Subject, ClassGroup, TimetableEntry
 from app.core.config import config
+=======
+from models.timetable import Teacher, Room, Subject, ClassGroup, TimetableEntry
+from config import config
+>>>>>>> f873dcb4c3c138d525538d150ccce98cb30cf32f:backend/solver.py
 
 class TimetableSolver:
     def __init__(self, db_session: Session):

@@ -8,7 +8,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from app.models.attendance import Student, AttendanceLog, Base
 from app.models.timetable import Teacher, Room, Subject, ClassGroup, TimetableEntry, teacher_subject
-from app.services.face_recognition import get_encoding, verify_identity
 from app.api.routes.timetable import router as timetable_router
 from app.api.routes.attendance import router as attendance_router
 from app.core.config import config
