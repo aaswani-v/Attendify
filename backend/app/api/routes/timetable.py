@@ -6,14 +6,8 @@ Enterprise-grade REST API endpoints for timetable management
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from typing import List
-<<<<<<< HEAD:backend/app/api/routes/timetable.py
 from app.models.timetable import Teacher, Room, Subject, ClassGroup, TimetableEntry, teacher_subject
 from app.schemas.timetable import (
-=======
-from database import SessionLocal
-from models.timetable import Teacher, Room, Subject, ClassGroup, TimetableEntry, teacher_subject
-from schemas import (
->>>>>>> f873dcb4c3c138d525538d150ccce98cb30cf32f:backend/timetable_routes.py
     TeacherCreate, TeacherResponse, RoomCreate, RoomResponse,
     SubjectCreate, SubjectResponse, ClassGroupCreate, ClassGroupResponse,
     TimetableEntryResponse, GenerateRequest, GenerateResponse
