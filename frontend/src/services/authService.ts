@@ -13,6 +13,37 @@ import type {
 } from '../types/auth.types';
 import type { ApiResponse } from '../types/api.types';
 
+import { auth, googleProvider } from '../config/firebase';
+import { signInWithPopup } from 'firebase/auth';
+
+/**
+ * Login with Google (Firebase)
+ */
+export const loginWithGoogle = async (): Promise<AuthResponse> => {
+  try {
+    const userCredential = await signInWithPopup(auth, googleProvider);
+    const idToken = await userCredential.user.getIdToken();
+
+    const response = await api.post<AuthResponse>('/api/auth/google', {
+      token: idToken
+    });
+
+    const authData = handleApiResponse(response);
+
+    // Store authentication data
+    localStorage.setItem(TOKEN_KEY, authData.access_token);
+    if (authData.refresh_token) {
+      localStorage.setItem(REFRESH_TOKEN_KEY, authData.refresh_token);
+    }
+    localStorage.setItem(USER_KEY, JSON.stringify(authData.user));
+    localStorage.setItem('userRole', authData.user.role);
+
+    return authData;
+  } catch (error) {
+    return handleApiError(error);
+  }
+};
+
 /**
  * Login user and store authentication data
  * @param credentials - User login credentials
@@ -20,9 +51,19 @@ import type { ApiResponse } from '../types/api.types';
  */
 export const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
   try {
-    const response = await api.post<ApiResponse<AuthResponse>>(
+    // Convert credentials to FormData for OAuth2 compatible endpoint
+    const formData = new URLSearchParams();
+    formData.append('username', credentials.username);
+    formData.append('password', credentials.password);
+
+    const response = await api.post<AuthResponse>(
       ROUTES.AUTH.LOGIN,
-      credentials
+      formData,
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      }
     );
 
     const authData = handleApiResponse(response);

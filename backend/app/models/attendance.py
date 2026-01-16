@@ -51,3 +51,12 @@ class AttendanceLog(Base):
     # Relationships
     student: Mapped["Student"] = relationship("Student", back_populates="attendance_logs")
     session = relationship("AttendanceSession", back_populates="attendance_logs")
+
+class Notice(Base):
+    __tablename__ = 'notices'
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    author: Mapped[str] = mapped_column(String, default="Admin")
+    date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
