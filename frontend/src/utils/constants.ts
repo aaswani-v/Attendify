@@ -83,4 +83,16 @@ export const API_ENDPOINTS = {
   GET_NOTICES: `${API_BASE_URL}/api/notices`,
   CREATE_NOTICE: `${API_BASE_URL}/api/notices`,
   DELETE_NOTICE: (id: number) => `${API_BASE_URL}/api/notices/${id}`,
+
+  // Sessions (NEW)
+  START_SESSION: `${API_BASE_URL}/api/sessions/start`,
+  END_SESSION: (id: number) => `${API_BASE_URL}/api/sessions/${id}/end`,
+  GET_SESSIONS: `${API_BASE_URL}/api/sessions`,
+  GET_ACTIVE_SESSIONS: `${API_BASE_URL}/api/sessions/active`,
+  GET_SESSION_SUMMARY: (id: number) => `${API_BASE_URL}/api/sessions/${id}/summary`,
+
+  // Additional Attendance
+  MARK_ATTENDANCE_MULTI: `${API_BASE_URL}/api/attendance/mark-multi`,
+  MANUAL_OVERRIDE: `${API_BASE_URL}/api/attendance/override`,
+  GET_THRESHOLDS: `${API_BASE_URL}/api/attendance/thresholds`,
 } as const;
