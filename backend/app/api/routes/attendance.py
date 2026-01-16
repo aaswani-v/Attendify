@@ -1,34 +1,490 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from sqlalchemy.orm import Session
-from app.core.models import ModelFactory
+from pydantic import BaseModel
+from typing import Optional, List
 from app.core.database import get_db
+from app.core.config_thresholds import thresholds
+from app.models.attendance import Student, AttendanceLog
+from app.models.session import AttendanceSession, SessionStatus
+from app.services.face_service import face_service
+from app.services.verification_service import verification_service
+from app.services.liveness_service import liveness_service
+from datetime import datetime
+import os
+import shutil
+from pathlib import Path
 
 router = APIRouter()
+
+# Base path for face images
+DATA_FACE_DIR = Path(__file__).resolve().parent.parent.parent.parent / "models" / "_data-face"
+
+
+# ========== Pydantic Schemas ==========
+
+class OverrideRequest(BaseModel):
+    """Manual attendance override by faculty"""
+    student_id: int
+    session_id: int
+    reason: str
+    override_by: str  # Faculty name/ID
+
+
+class AttendanceMarkResponse(BaseModel):
+    """Response for attendance marking"""
+    success: bool
+    status: str
+    student_name: Optional[str] = None
+    confidence: float = 0.0
+    confidence_label: str = "UNKNOWN"
+    proxy_suspected: bool = False
+    proxy_reason: Optional[str] = None
+    liveness_passed: bool = False
+    log_id: Optional[int] = None
+    session_id: Optional[int] = None
+    notes: List[str] = []
+    face_rect: Optional[List[int]] = None  # [x, y, width, height] for bounding box
+
+
+# ========== Registration Endpoint ==========
 
 @router.post("/register")
 async def register(
     name: str = Form(...), 
     roll_number: str = Form(...), 
+    fingerprint_id: str = Form(None),
+    id_card_code: str = Form(None),
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
-    result = ModelFactory.register_student(db, name, roll_number, file)
-    if not result["success"]:
-        raise HTTPException(400, result["message"])
-    return {"message": result["message"], "student_id": result.get("student_id")}
+    """
+    Register a new student with face, fingerprint, and ID card.
+    Creates a folder in _data-face/{name} and saves the initial image.
+    """
+    try:
+        # Check if student exists
+        existing = db.query(Student).filter(
+            (Student.roll_number == roll_number) | (Student.name == name)
+        ).first()
+        if existing:
+            raise HTTPException(400, "Student already registered (Roll No or Name exists)")
+        
+        # Create folder
+        clean_name = name.lower().replace(" ", "_")
+        folder_path = DATA_FACE_DIR / clean_name
+        folder_path.mkdir(parents=True, exist_ok=True)
+        
+        # Save image
+        file_path = folder_path / "1.jpg"
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        # Create DB entry
+        new_student = Student(
+            name=name,
+            roll_number=roll_number,
+            photo_folder_path=str(folder_path),
+            fingerprint_id=fingerprint_id,
+            id_card_code=id_card_code
+        )
+        db.add(new_student)
+        db.commit()
+        db.refresh(new_student)
+        
+        return {
+            "message": "Student registered successfully", 
+            "student_id": new_student.id,
+            "folder": str(folder_path)
+        }
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(500, f"Registration failed: {str(e)}")
 
-@router.post("/mark")
+
+# ========== Single-Frame Attendance (Legacy) ==========
+
+@router.post("/mark", response_model=AttendanceMarkResponse)
 async def mark_attendance(
     file: UploadFile = File(...),
+    session_id: Optional[int] = Form(None),
+    student_id: str = Form(None),       # Claimed Identity
+    fingerprint_data: str = Form(None), # Simulated Fingerprint
+    id_card_scan: str = Form(None),     # Simulated Card Code
     db: Session = Depends(get_db)
 ):
-    result = ModelFactory.mark_attendance(db, file)
-    return result
+    """
+    Mark attendance with single-frame face verification.
+    
+    Enhanced with:
+    - Session validation
+    - Duplicate prevention
+    - Proxy detection
+    - Configurable thresholds
+    """
+    try:
+        # Validate session if provided
+        session = None
+        if session_id:
+            session = db.query(AttendanceSession).filter(
+                AttendanceSession.id == session_id
+            ).first()
+            if not session:
+                raise HTTPException(404, "Session not found")
+            if not session.is_active:
+                raise HTTPException(400, f"Session is not active (status: {session.status})")
+        
+        # Read image bytes
+        frame_bytes = await file.read()
+        
+        # Face Verification
+        verify_result = face_service.verify_student(frame_bytes)
+        
+        if verify_result.get("status") == "error":
+            raise HTTPException(500, verify_result["message"])
+        
+        # Initialize response values
+        status = "Unknown"
+        confidence = verify_result.get("confidence", 0.0)
+        recognized_name = verify_result.get("student_name")
+        face_rect = verify_result.get("face_rect")  # [x, y, w, h] for bounding box
+        proxy_suspected = False
+        proxy_reason = None
+        verification_method = "Face"
+        notes = []
+        db_student = None
+        
+        # Process verification result
+        if verify_result["status"] == "no_face":
+            status = "Failed: No Face Detected"
+        elif verify_result["status"] == "multiple_faces":
+            status = "Proxy Suspected: Multiple Faces"
+            proxy_suspected = True
+            proxy_reason = f"Detected {verify_result.get('face_count', 2)} faces"
+        elif recognized_name:
+            # Face recognized - find in DB
+            db_student = db.query(Student).filter(Student.name == recognized_name).first()
+            
+            if not db_student:
+                status = f"Face Recognized ({recognized_name}) but not in database"
+            else:
+                # Check confidence threshold
+                confidence_label = thresholds.get_confidence_label(confidence)
+                
+                if confidence < thresholds.FACE_CONFIDENCE_REJECT:
+                    status = "Rejected: Low Confidence"
+                    notes.append(f"Confidence {confidence:.1f}% below threshold")
+                else:
+                    status = "Face Verified"
+                    
+                    # Multi-factor checks
+                    if student_id:
+                        if str(db_student.roll_number) != str(student_id) and str(db_student.id) != str(student_id):
+                            status = "Proxy Suspected: ID Mismatch"
+                            proxy_suspected = True
+                            proxy_reason = f"Claimed {student_id}, recognized as {recognized_name}"
+                    
+                    if fingerprint_data:
+                        verification_method += "+Fingerprint"
+                        if db_student.fingerprint_id != fingerprint_data:
+                            status = "Proxy Suspected: Fingerprint Mismatch"
+                            proxy_suspected = True
+                    
+                    if id_card_scan:
+                        verification_method += "+IDCard"
+                        if db_student.id_card_code != id_card_scan:
+                            status = "Proxy Suspected: ID Card Mismatch"
+                            proxy_suspected = True
+                
+                # Check duplicate in session
+                if session_id and db_student and "Verified" in status:
+                    existing = db.query(AttendanceLog).filter(
+                        AttendanceLog.student_id == db_student.id,
+                        AttendanceLog.session_id == session_id,
+                        AttendanceLog.status.contains("Verified")
+                    ).first()
+                    if existing:
+                        return AttendanceMarkResponse(
+                            success=False,
+                            status="Already Marked",
+                            student_name=recognized_name,
+                            confidence=confidence,
+                            confidence_label=thresholds.get_confidence_label(confidence),
+                            notes=[f"Already marked at {existing.timestamp}"],
+                            session_id=session_id
+                        )
+        
+        # Create attendance log
+        log = AttendanceLog(
+            student_id=db_student.id if db_student else None,
+            session_id=session_id,
+            status=status,
+            confidence=confidence,
+            avg_confidence=confidence,
+            confidence_label=thresholds.get_confidence_label(confidence),
+            is_proxy_suspected=proxy_suspected,
+            verification_method=verification_method,
+            notes=", ".join(notes) if notes else None,
+            frame_count=1
+        )
+        db.add(log)
+        db.commit()
+        db.refresh(log)
+        
+        return AttendanceMarkResponse(
+            success="Verified" in status and not proxy_suspected,
+            status=status,
+            student_name=recognized_name,
+            confidence=confidence,
+            confidence_label=thresholds.get_confidence_label(confidence),
+            proxy_suspected=proxy_suspected,
+            proxy_reason=proxy_reason,
+            log_id=log.id,
+            session_id=session_id,
+            notes=notes,
+            face_rect=list(face_rect) if face_rect else None
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Mark API: {e}")
+        raise HTTPException(500, f"Internal Error: {str(e)}")
+
+
+# ========== Multi-Frame Attendance (Enhanced) ==========
+
+@router.post("/mark-multi", response_model=AttendanceMarkResponse)
+async def mark_attendance_multi(
+    files: List[UploadFile] = File(...),
+    session_id: Optional[int] = Form(None),
+    student_id: str = Form(None),
+    check_liveness: bool = Form(False),
+    db: Session = Depends(get_db)
+):
+    """
+    Mark attendance with multi-frame temporal verification.
+    
+    Accepts 3+ frames captured over ~1.5 seconds for:
+    - Identity consistency check
+    - Higher confidence through averaging
+    - Optional liveness (blink) detection
+    """
+    try:
+        # Validate session
+        session = None
+        if session_id:
+            session = db.query(AttendanceSession).filter(
+                AttendanceSession.id == session_id
+            ).first()
+            if not session:
+                raise HTTPException(404, "Session not found")
+            if not session.is_active:
+                raise HTTPException(400, "Session is not active")
+            
+            # Override check_liveness with session setting
+            if session.require_liveness:
+                check_liveness = True
+        
+        # Read all frames
+        frames = []
+        for f in files:
+            frame_bytes = await f.read()
+            frames.append(frame_bytes)
+        
+        if len(frames) < thresholds.REQUIRED_CONSISTENT_FRAMES:
+            return AttendanceMarkResponse(
+                success=False,
+                status=f"Need {thresholds.REQUIRED_CONSISTENT_FRAMES}+ frames",
+                notes=[f"Received {len(frames)} frames"]
+            )
+        
+        # Run multi-frame verification
+        result = verification_service.verify_multi_frame(
+            frames=frames,
+            session_id=session_id,
+            claimed_student_id=student_id,
+            db=db
+        )
+        
+        # Liveness check if enabled
+        liveness_passed = False
+        if check_liveness and result.success:
+            liveness_result = liveness_service.check_liveness(frames)
+            liveness_passed = liveness_result.passed
+            
+            if not liveness_passed:
+                result.success = False
+                result.status = "Liveness Failed"
+                result.notes.append(liveness_result.message)
+        
+        # Find student for DB record
+        db_student = None
+        if result.student_name:
+            db_student = db.query(Student).filter(
+                Student.name == result.student_name
+            ).first()
+        
+        # Create attendance log
+        log = AttendanceLog(
+            student_id=db_student.id if db_student else None,
+            session_id=session_id,
+            status=result.status,
+            confidence=result.avg_confidence,
+            avg_confidence=result.avg_confidence,
+            confidence_label=result.confidence_label,
+            is_proxy_suspected=result.is_proxy_suspected,
+            verification_method="Face+MultiFrame",
+            notes=", ".join(result.notes) if result.notes else None,
+            frame_count=result.frame_count,
+            liveness_passed=liveness_passed
+        )
+        db.add(log)
+        db.commit()
+        db.refresh(log)
+        
+        return AttendanceMarkResponse(
+            success=result.success,
+            status=result.status,
+            student_name=result.student_name,
+            confidence=result.avg_confidence,
+            confidence_label=result.confidence_label,
+            proxy_suspected=result.is_proxy_suspected,
+            proxy_reason=result.proxy_reason,
+            liveness_passed=liveness_passed,
+            log_id=log.id,
+            session_id=session_id,
+            notes=result.notes
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Mark-Multi API: {e}")
+        raise HTTPException(500, f"Internal Error: {str(e)}")
+
+
+# ========== Manual Override (Faculty) ==========
+
+@router.post("/override")
+async def manual_override(
+    data: OverrideRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Manual attendance override by faculty.
+    
+    Used when:
+    - Face recognition fails repeatedly
+    - Student has changed appearance
+    - Technical issues prevent normal marking
+    
+    Creates an audit trail with override reason and faculty ID.
+    """
+    # Validate student
+    student = db.query(Student).filter(Student.id == data.student_id).first()
+    if not student:
+        raise HTTPException(404, "Student not found")
+    
+    # Validate session
+    session = db.query(AttendanceSession).filter(
+        AttendanceSession.id == data.session_id
+    ).first()
+    if not session:
+        raise HTTPException(404, "Session not found")
+    
+    # Check for existing attendance
+    existing = db.query(AttendanceLog).filter(
+        AttendanceLog.student_id == data.student_id,
+        AttendanceLog.session_id == data.session_id,
+        AttendanceLog.status.contains("Verified")
+    ).first()
+    
+    if existing:
+        return {
+            "message": "Attendance already marked",
+            "existing_log_id": existing.id,
+            "timestamp": existing.timestamp
+        }
+    
+    # Create manual override log
+    log = AttendanceLog(
+        student_id=data.student_id,
+        session_id=data.session_id,
+        status="Verified (Manual Override)",
+        confidence=100.0,  # Manual = 100% by definition
+        avg_confidence=100.0,
+        confidence_label="MANUAL",
+        is_proxy_suspected=False,
+        verification_method="Manual Override",
+        notes=f"Override by {data.override_by}: {data.reason}",
+        frame_count=0,
+        liveness_passed=False
+    )
+    db.add(log)
+    db.commit()
+    db.refresh(log)
+    
+    return {
+        "message": "Manual override successful",
+        "log_id": log.id,
+        "student_name": student.name,
+        "override_by": data.override_by
+    }
+
+
+# ========== Utility Endpoints ==========
 
 @router.get("/logs")
-def get_logs(db: Session = Depends(get_db)):
-    return ModelFactory.get_attendance_logs(db)
+def get_logs(
+    session_id: Optional[int] = None,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    """Get attendance logs, optionally filtered by session."""
+    query = db.query(AttendanceLog)
+    
+    if session_id:
+        query = query.filter(AttendanceLog.session_id == session_id)
+    
+    logs = query.order_by(AttendanceLog.timestamp.desc()).limit(limit).all()
+    
+    # Enrich with student names
+    results = []
+    for log in logs:
+        student_name = None
+        if log.student_id:
+            student = db.query(Student).filter(Student.id == log.student_id).first()
+            student_name = student.name if student else None
+        
+        results.append({
+            "id": log.id,
+            "student_id": log.student_id,
+            "student_name": student_name,
+            "session_id": log.session_id,
+            "timestamp": log.timestamp.isoformat(),
+            "status": log.status,
+            "confidence": log.confidence,
+            "confidence_label": log.confidence_label,
+            "is_proxy_suspected": log.is_proxy_suspected,
+            "verification_method": log.verification_method,
+            "frame_count": log.frame_count,
+            "liveness_passed": log.liveness_passed
+        })
+    
+    return results
+
 
 @router.get("/students")
 def get_students(db: Session = Depends(get_db)):
-    return ModelFactory.get_students(db)
+    """Get all registered students."""
+    return db.query(Student).all()
+
+
+@router.get("/thresholds")
+def get_thresholds():
+    """
+    Get current verification thresholds.
+    Useful for transparency and debugging.
+    """
+    return thresholds.to_dict()

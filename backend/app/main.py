@@ -7,10 +7,13 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from app.models.attendance import Student, AttendanceLog, Base
+from app.models.session import AttendanceSession  # NEW: Session model
 from app.models.timetable import Teacher, Room, Subject, ClassGroup, TimetableEntry, teacher_subject
-from app.api.routes.timetable import router as timetable_router
+# from app.api.routes.timetable import router as timetable_router
 from app.api.routes.attendance import router as attendance_router
+from app.api.routes.sessions import router as sessions_router  # NEW: Sessions API
 from app.core.config import config
+from app.core.config_thresholds import thresholds  # NEW: Thresholds config
 from app.core.database import create_tables, engine, SessionLocal
 from app.core.logging import logger
 import uvicorn
@@ -22,9 +25,9 @@ logger.info("Database initialized successfully")
 
 # Create FastAPI app
 app = FastAPI(
-    title="Attendify - Enterprise Student Management System",
-    description="Unified platform for Attendance Verification & Timetable Generation",
-    version="2.0.0"
+    title="Attendify - Intelligent Student Attendance Verification System",
+    description="Multi-factor attendance verification with face recognition, session management, proxy detection, and liveness checks",
+    version="3.0.0"
 )
 
 # CORS Configuration (Admin Mode - No restrictions)
@@ -37,8 +40,9 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(timetable_router)
-app.include_router(attendance_router, prefix="/api/attendance")
+# app.include_router(timetable_router)
+app.include_router(attendance_router, prefix="/api/attendance", tags=["Attendance"])
+app.include_router(sessions_router, prefix="/api/sessions", tags=["Sessions"])
 
 # ==================== SEEDING & UTILITIES ====================
 
@@ -117,17 +121,26 @@ def seed_database():
 
 @app.get("/")
 def root():
-    """API Health Check"""
+    """API Health Check - Intelligent Attendance Verification System"""
     return {
-        "service": "Attendify Enterprise System",
-        "version": "2.0.0",
+        "service": "Attendify - Intelligent Attendance Verification",
+        "version": "3.0.0",
         "status": "operational",
-        "features": ["Face Recognition Attendance", "AI-Powered Timetable Generation"],
+        "features": [
+            "Multi-Factor Face Recognition",
+            "Session-Based Attendance",
+            "Temporal Multi-Frame Verification",
+            "Liveness Detection (Anti-Spoofing)",
+            "Proxy Detection",
+            "Manual Override",
+            "Configurable Thresholds"
+        ],
         "endpoints": {
             "attendance": "/api/attendance/*",
-            "timetable": "/api/timetable/*",
+            "sessions": "/api/sessions/*",
             "docs": "/docs"
-        }
+        },
+        "thresholds": thresholds.to_dict()
     }
 
 @app.get("/api/config")
