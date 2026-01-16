@@ -3,12 +3,12 @@ import Sidebar from './Sidebar';
 import './Layout.css';
 
 const Layout = () => {
-    // In a real app, you'd get the role from Context or Redux
-    const role = 'faculty'; // Defaulting to faculty for dev, or toggle manually
+    // Get role from localStorage or default to student for safety
+    const role = localStorage.getItem('userRole') || 'student';
 
     return (
         <div className="dashboard-layout">
-            <Sidebar role={role} />
+            <Sidebar role={role as any} />
             <main className="dashboard-content">
                 <header className="topbar">
                     <h3>Dashboard</h3>

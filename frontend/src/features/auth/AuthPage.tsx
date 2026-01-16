@@ -6,6 +6,7 @@ const AuthPage = () => {
     // True = "Right Panel Active" = Faculty Login
     // False = Student Login
     const [isFaculty, setIsFaculty] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(false); // Admin Toggle
 
     // Theme state
     const [theme, setTheme] = useState<'light' | 'dark'>('light');
@@ -15,6 +16,8 @@ const AuthPage = () => {
     const [studentPass, setStudentPass] = useState('');
     const [facultyUser, setFacultyUser] = useState('');
     const [facultyPass, setFacultyPass] = useState('');
+    const [adminUser, setAdminUser] = useState('');
+    const [adminPass, setAdminPass] = useState('');
 
     const navigate = useNavigate();
 
@@ -30,14 +33,61 @@ const AuthPage = () => {
     const handleStudentLogin = (e: React.FormEvent) => {
         e.preventDefault();
         console.log('Student Login:', { studentUser, studentPass });
+        localStorage.setItem('userRole', 'student');
         navigate('/dashboard');
     };
 
     const handleFacultyLogin = (e: React.FormEvent) => {
         e.preventDefault();
         console.log('Faculty Login:', { facultyUser, facultyPass });
+        localStorage.setItem('userRole', 'faculty');
         navigate('/dashboard');
     };
+
+    const handleAdminLogin = (e: React.FormEvent) => {
+        e.preventDefault();
+        // Here you would implement actual Admin Authentication
+        console.log('Admin Login:', { adminUser, adminPass });
+        localStorage.setItem('userRole', 'admin');
+        navigate('/dashboard'); // Proceed to dashboard (or special admin route)
+    };
+
+    if (isAdmin) {
+        return (
+            <div className="container" id="container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                 <button className="theme-toggle" onClick={toggleTheme} title="Toggle Theme">
+                    {theme === 'light' ? <i className='bx bxs-moon'></i> : <i className='bx bxs-sun'></i>}
+                </button>
+                <div className="form-container" style={{ position: 'relative', width: '100%', height: '100%', zIndex: 10 }}>
+                    <form onSubmit={handleAdminLogin} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                        <h1 style={{ marginBottom: '20px' }}>Admin Portal</h1>
+                        <input
+                            type="text"
+                            placeholder="Admin Username"
+                            value={adminUser}
+                            onChange={(e) => setAdminUser(e.target.value)}
+                            style={{ margin: '10px 0', padding: '12px 15px', width: '100%' }}
+                        />
+                        <input
+                            type="password"
+                            placeholder="Password"
+                            value={adminPass}
+                            onChange={(e) => setAdminPass(e.target.value)}
+                            style={{ margin: '10px 0', padding: '12px 15px', width: '100%' }}
+                        />
+                        <button style={{ marginTop: '20px' }}>Login to Dashboard</button>
+                        <button 
+                            type="button" 
+                            onClick={() => setIsAdmin(false)}
+                            style={{ marginTop: '10px', background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--text-secondary)' }}
+                        >
+                            Back to Standard Login
+                        </button>
+                    </form>
+                </div>
+            </div>
+        );
+    }
 
     return (
         // Note: 'right-panel-active' is the class from the original template logic often used for this slider
@@ -50,6 +100,25 @@ const AuthPage = () => {
                 ) : (
                     <i className='bx bxs-sun'></i>
                 )}
+            </button>
+
+            {/* Admin Toggle (Added) */}
+            <button 
+                onClick={() => setIsAdmin(true)}
+                style={{
+                    position: 'absolute',
+                    top: '20px',
+                    left: '20px',
+                    zIndex: 100,
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-secondary)',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontSize: '12px'
+                }}
+            >
+                <i className='bx bxs-lock-alt'></i> Admin Login
             </button>
 
             {/* Faculty Form Container (Sign Up position) */}
