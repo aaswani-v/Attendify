@@ -8,7 +8,7 @@ import io
 import hashlib
 from PIL import Image
 from sqlalchemy.orm import Session
-from models import Student
+from app.models.attendance import Student
 
 # Mock face recognition for development
 class MockFaceRecognition:
