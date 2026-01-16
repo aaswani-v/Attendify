@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { GlassCard, GlassButton, GlassInput, Grid } from '../../styles/glassmorphism';
-import { API_ENDPOINTS } from '../../utils/api';
+import { GlassCard, GlassButton, GlassInput } from '../styles/glassmorphism';
+import { API_ENDPOINTS } from '../utils/api';
 
 const Container = styled.div`
   padding: 32px;

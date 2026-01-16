@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import styled from 'styled-components';
-import { GlassCard, GlassButton } from '../../styles/glassmorphism';
-import { API_ENDPOINTS } from '../../utils/api';
+import { GlassCard, GlassButton } from '../styles/glassmorphism';
+import { API_ENDPOINTS } from '../utils/api';
 
 const Container = styled.div`
   padding: 32px;
@@ -25,7 +25,7 @@ const Table = styled.table`
 `;
 
 const ReportsPage = () => {
-    const [logs, setLogs] = useState<any[]>([]);
+    const [logs, setLogs] = useState<{id: number; student_name: string; status: string; timestamp: string; notes?: string}[]>([]);
     
     useEffect(() => {
         fetch(API_ENDPOINTS.GET_ATTENDANCE_LOGS)

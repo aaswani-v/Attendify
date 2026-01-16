@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
-import { GlassCard, GlassButton } from '../../styles/glassmorphism';
-import { API_ENDPOINTS } from '../../utils/api';
+import { GlassCard, GlassButton } from '../styles/glassmorphism';
+import { API_ENDPOINTS } from '../utils/api';
 
 const Container = styled.div`
   padding: 32px;
@@ -24,7 +24,7 @@ const LogItem = styled(GlassCard)`
 `;
 
 const StudentAttendancePage = () => {
-    const [logs, setLogs] = useState<any[]>([]);
+    const [logs, setLogs] = useState<{id: number; timestamp: string; status: string}[]>([]);
     const navigate = useNavigate();
     
     // Get user role
@@ -68,7 +68,7 @@ const StudentAttendancePage = () => {
             <h2>Attendance History</h2>
             <div style={{ marginTop: '16px' }}>
                 {logs.length === 0 ? <p>No records found.</p> : (
-                    logs.map((log: any) => (
+                    logs.map((log: { id: number; timestamp: string; status: string }) => (
                         <LogItem key={log.id}>
                             <div>
                                 <h3>{new Date(log.timestamp).toLocaleDateString()}</h3>

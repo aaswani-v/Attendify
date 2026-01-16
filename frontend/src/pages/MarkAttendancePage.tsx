@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import './MarkAttendancePage.css';
+import { useState, useRef, useEffect } from 'react';
+import '../features/attendance/MarkAttendancePage.css';
 
 const MarkAttendancePage = () => {
     const [mode, setMode] = useState<'camera' | 'manual'>('camera');
@@ -17,32 +17,32 @@ const MarkAttendancePage = () => {
         { id: 5, name: 'Chris Brown', rollNo: 'CS105', status: 'not-marked' },
     ]);
 
-    useEffect(() => {
-        if (mode === 'camera') {
-            startCamera();
-        }
-        return () => stopCamera();
-    }, [mode]);
-
-    const startCamera = async () => {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-            }
-            setCameraError(false);
-        } catch (err) {
-            console.error('Camera access denied:', err);
-            setCameraError(true);
-        }
-    };
-
     const stopCamera = () => {
         if (videoRef.current && videoRef.current.srcObject) {
             const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
             tracks.forEach(track => track.stop());
         }
     };
+
+    useEffect(() => {
+        const startCamera = async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                }
+                setCameraError(false);
+            } catch (err) {
+                console.error('Camera access denied:', err);
+                setCameraError(true);
+            }
+        };
+
+        if (mode === 'camera') {
+            startCamera();
+        }
+        return () => stopCamera();
+    }, [mode]);
 
     const handleStartScan = () => {
         setScanning(true);

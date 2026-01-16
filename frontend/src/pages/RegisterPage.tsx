@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import styled from 'styled-components';
-import { GlassCard, GlassButton, GlassInput } from '../../styles/glassmorphism';
-import { API_ENDPOINTS } from '../../utils/api';
+import { GlassCard, GlassButton, GlassInput } from '../styles/glassmorphism';
+import { API_ENDPOINTS } from '../utils/api';
 
 const Container = styled.div`
   padding: 32px;
@@ -77,7 +77,7 @@ const RegisterPage = () => {
             } else {
                 setStatus("Error: " + data.detail);
             }
-        } catch (error) {
+        } catch {
             setStatus("Network Error");
         } finally {
             setLoading(false);

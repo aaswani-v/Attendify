@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import styled from 'styled-components';
-import { GlassCard, Grid } from '../../styles/glassmorphism';
-import { API_ENDPOINTS } from '../../utils/api';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis } from 'recharts';
+import { GlassCard, Grid } from '../styles/glassmorphism';
+import { API_ENDPOINTS } from '../utils/api';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 const Container = styled.div`
   padding: 32px;
@@ -37,8 +37,8 @@ const AnalyticsDashboard = () => {
             .then(res => res.json())
             .then(data => {
                 const total = data.length;
-                const present = data.filter((d:any) => d.status === 'Present').length;
-                const unknown = data.filter((d:any) => d.status === 'Unknown').length;
+                const present = data.filter((d: { status: string }) => d.status === 'Present').length;
+                const unknown = data.filter((d: { status: string }) => d.status === 'Unknown').length;
                 const absent = total - present - unknown; // Simplistic
                 setStats({ total, present, absent, unknown });
             })

@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
-import './SchedulePage.css';
-import './StudentSchedule.css';
+import '../features/schedule/SchedulePage.css';
+import '../features/schedule/StudentSchedule.css';
 
 const SchedulePage = () => {
     // In a real app, this would come from a context hook
@@ -16,7 +16,7 @@ const SchedulePage = () => {
     const timeSlots = ['9:00 - 10:00', '10:00 - 11:00', '11:00 - 11:30', '11:30 - 12:30', '12:30 - 1:30'];
     const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
-    const scheduleData: any = {
+    const scheduleData = {
         'Monday': {
             '9:00 - 10:00': { subject: 'Mathematics', room: '201', professor: 'Dr. Rajesh' },
             '10:00 - 11:00': { subject: 'Physics', room: '102', professor: 'Prof. Anita' },
@@ -119,7 +119,7 @@ const SchedulePage = () => {
                                             ) : null;
                                         }
 
-                                        const classInfo = scheduleData[day]?.[time];
+                                        const classInfo = (scheduleData as any)[day]?.[time];
 
                                         if (time === '11:00 - 11:30') {
                                             // Break column handling is weird in standard tables without full rowspan logic

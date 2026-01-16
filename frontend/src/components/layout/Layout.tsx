@@ -9,13 +9,13 @@ const Layout = () => {
 
     return (
         <div className="dashboard-layout">
-            <Sidebar role={role as any} />
+            <Sidebar role={role as 'student' | 'faculty' | 'admin'} />
             <main className="dashboard-content">
                 <div className="content-area">
                     <Outlet />
                 </div>
             </main>
-            <BottomNav role={role} />
+            <BottomNav role={role as 'student' | 'faculty' | 'admin'} />
         </div>
     );
 };
