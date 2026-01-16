@@ -8,7 +8,8 @@ from typing import Dict, Any
 
 class Config:
     # Database
-    DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///attendify.db")
+    DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///attendance.db")
+    DEBUG_MODE = os.getenv("DEBUG_MODE", "false").lower() == "true"
     
     # CORS Settings
     CORS_ORIGINS = ["*"]  # Admin mode - no restrictions
