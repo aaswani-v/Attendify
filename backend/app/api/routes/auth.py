@@ -20,8 +20,77 @@ from app.schemas.auth import (
     TokenResponse,
     CurrentUser
 )
+from app.core.firebase import verify_firebase_token
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+class GoogleLoginRequest(BaseModel):
+    token: str
+
+@router.post("/google", response_model=TokenResponse)
+async def login_with_google(request: GoogleLoginRequest, db: Session = Depends(get_db)):
+    """Login using Firebase Google ID Token"""
+    
+    # Verify token with Firebase
+    firebase_user = verify_firebase_token(request.token)
+    if not firebase_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Firebase token"
+        )
+    
+    email = firebase_user.get('email')
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email not found in token"
+        )
+
+    # Check if user exists
+    user = db.query(User).filter(User.email == email).first()
+    
+    # If user doesn't exist, create one (Auto-registration)
+    if not user:
+        # Default to student if not specified
+        # In a real app, you might want to restrict this or have a separate flow
+        user = User(
+            username=email.split('@')[0], # Use part of email as username
+            email=email,
+            full_name=firebase_user.get('name', 'Firebase User'),
+            hashed_password=get_password_hash("firebase_login_" + email), # Dummy password
+            role=UserRole.STUDENT, # Default role
+            is_active=True
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is inactive"
+        )
+
+    # Create access token
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username, "role": user.role.value},
+        expires_delta=access_token_expires
+    )
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "full_name": user.full_name,
+            "role": user.role.value,
+            "is_active": user.is_active
+        }
+    }
 
 # Security
 SECRET_KEY = "your-secret-key-change-in-production"  # TODO: Move to environment variable

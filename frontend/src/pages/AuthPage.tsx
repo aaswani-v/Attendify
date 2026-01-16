@@ -5,7 +5,7 @@ import type { UserRole } from '../types/auth.types';
 import './Auth.css';
 
 const AuthPage = () => {
-    // True = "Right Panel Active" = Faculty Login
+    const { login, loginWithGoogle, loading: authLoading, error: authError } = useAuth();
     // False = Student Login
     const [isFaculty, setIsFaculty] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false); // Admin Toggle
@@ -22,11 +22,16 @@ const AuthPage = () => {
     const [adminPass, setAdminPass] = useState('');
 
     // Loading and error states
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [localLoading, setLocalLoading] = useState(false);
+    const [localError, setLocalError] = useState<string | null>(null);
+
+    const loading = authLoading || localLoading;
+    const error = authError || localError;
+    const setError = setLocalError;
+    const setLoading = setLocalLoading;
 
     // const navigate = useNavigate();
-    const { login } = useAuth();
+    // const { login } = useAuth();
 
     // Effect to apply theme to body/root
     useEffect(() => {
@@ -117,6 +122,24 @@ const AuthPage = () => {
                             disabled={loading}
                         >
                             {loading ? 'Logging in...' : 'Login to Dashboard'}
+                        </button>
+                        <button 
+                            type="button" 
+                            onClick={async () => {
+                                try {
+                                    setLoading(true);
+                                    await useAuth().loginWithGoogle();
+                                } catch (err) {
+                                    setError(err instanceof Error ? err.message : 'Google login failed');
+                                } finally {
+                                    setLoading(false);
+                                }
+                            }}
+                            style={{ marginTop: '10px', background: '#DB4437', color: 'white', border: 'none' }}
+                            disabled={loading}
+                        >
+                            <i className='bx bxl-google' style={{ marginRight: '8px' }}></i>
+                            Sign in with Google
                         </button>
                         <button 
                             type="button" 

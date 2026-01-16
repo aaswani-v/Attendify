@@ -14,6 +14,7 @@ interface UseAuthReturn {
   error: string | null;
   isAuthenticated: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   register: (userData: RegisterData) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
@@ -56,6 +57,27 @@ export const useAuth = (): UseAuthReturn => {
       navigate('/dashboard');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Login failed';
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [navigate]);
+
+  /**
+   * Login with Google
+   */
+  const loginWithGoogle = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const authData = await authService.loginWithGoogle();
+      setUser(authData.user);
+
+      navigate('/dashboard');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Google Login failed';
       setError(errorMessage);
       throw err;
     } finally {

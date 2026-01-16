@@ -12,10 +12,12 @@
   "dependencies": {
     "@types/styled-components": "^5.1.36",
     "axios": "^1.13.2",
+    "firebase": "^12.8.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.12.0",
     "react-webcam": "^7.2.0",
+    "recharts": "^3.6.0",
     "styled-components": "^6.3.8"
   },
   "devDependencies": {
