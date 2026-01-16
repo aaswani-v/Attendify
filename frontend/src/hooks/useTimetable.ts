@@ -4,7 +4,7 @@
 
 import { useState, useCallback } from 'react';
 import { API_ENDPOINTS } from '../utils/api';
-import { TimetableEntry, GenerateResponse } from '../utils/types';
+import type { TimetableEntry, GenerateResponse } from '../utils/types';
 
 export const useTimetable = () => {
   const [loading, setLoading] = useState(false);

@@ -6,7 +6,7 @@ import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { GlassCard, Grid, Badge } from '../styles/glassmorphism';
 import { API_ENDPOINTS } from '../utils/api';
-import { AttendanceLog } from '../utils/types';
+import type { AttendanceLog } from '../utils/types';
 
 const Container = styled.div`
   padding: 32px;

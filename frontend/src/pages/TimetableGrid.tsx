@@ -7,7 +7,7 @@ import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { useTimetable } from '../hooks/useTimetable';
 import { GlassCard, FloatingActionButton, SuccessBanner, ErrorBanner } from '../styles/glassmorphism';
-import { TimetableEntry, ClassGroup } from '../utils/types';
+import type { TimetableEntry, ClassGroup } from '../utils/types';
 import { DAYS, PERIODS } from '../utils/api';
 
 const Container = styled.div`

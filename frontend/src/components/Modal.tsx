@@ -2,7 +2,7 @@
  * Modal Component for Forms
  */
 
-import React, { ReactNode } from 'react';
+import React, { type ReactNode } from 'react';
 import styled from 'styled-components';
 import { GlassCard, GlassButton } from '../styles/glassmorphism';
 
