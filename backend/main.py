@@ -6,8 +6,9 @@ Enterprise-grade unified system: Attendance + Timetable Generation
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from models import SessionLocal, Student, AttendanceLog, Base, engine
-from timetable_models import Teacher, Room, Subject, ClassGroup, TimetableEntry, teacher_subject
+from database import SessionLocal, Base, engine
+from models.attendance import Student, AttendanceLog
+from models.timetable import Teacher, Room, Subject, ClassGroup, TimetableEntry, teacher_subject
 from services import get_encoding, verify_identity
 from timetable_routes import router as timetable_router
 from config import config
