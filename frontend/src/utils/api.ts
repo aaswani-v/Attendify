@@ -8,8 +8,18 @@ export const API_ENDPOINTS = {
   // Attendance
   REGISTER_STUDENT: `${API_BASE_URL}/api/attendance/register`,
   MARK_ATTENDANCE: `${API_BASE_URL}/api/attendance/mark`,
+  MARK_ATTENDANCE_MULTI: `${API_BASE_URL}/api/attendance/mark-multi`,
+  MANUAL_OVERRIDE: `${API_BASE_URL}/api/attendance/override`,
   GET_ATTENDANCE_LOGS: `${API_BASE_URL}/api/attendance/logs`,
   GET_STUDENTS: `${API_BASE_URL}/api/attendance/students`,
+  GET_THRESHOLDS: `${API_BASE_URL}/api/attendance/thresholds`,
+  
+  // Sessions (NEW)
+  START_SESSION: `${API_BASE_URL}/api/sessions/start`,
+  END_SESSION: (id: number) => `${API_BASE_URL}/api/sessions/${id}/end`,
+  GET_SESSIONS: `${API_BASE_URL}/api/sessions`,
+  GET_ACTIVE_SESSIONS: `${API_BASE_URL}/api/sessions/active`,
+  GET_SESSION_SUMMARY: (id: number) => `${API_BASE_URL}/api/sessions/${id}/summary`,
   
   // Timetable
   GENERATE_TIMETABLE: `${API_BASE_URL}/api/timetable/generate`,
