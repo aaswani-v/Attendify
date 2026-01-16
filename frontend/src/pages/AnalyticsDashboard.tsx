@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { GlassCard, Grid } from '../styles/glassmorphism';
-import { API_ENDPOINTS } from '../utils/api';
+import { attendanceService } from '../services/attendanceService';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 const Container = styled.div`
@@ -33,13 +33,12 @@ const AnalyticsDashboard = () => {
     });
     
     useEffect(() => {
-        fetch(API_ENDPOINTS.GET_ATTENDANCE_LOGS)
-            .then(res => res.json())
+        attendanceService.getLogs()
             .then(data => {
                 const total = data.length;
-                const present = data.filter((d: { status: string }) => d.status === 'Present').length;
-                const unknown = data.filter((d: { status: string }) => d.status === 'Unknown').length;
-                const absent = total - present - unknown; // Simplistic
+                const present = data.filter(d => d.status === 'Present').length;
+                const unknown = data.filter(d => d.status === 'Unknown' || d.status === 'Rejected').length;
+                const absent = total - present - unknown; // Simplistic approach
                 setStats({ total, present, absent, unknown });
             })
             .catch(err => console.error(err));

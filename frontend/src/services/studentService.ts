@@ -4,19 +4,24 @@
  */
 
 import { apiClient } from '../utils/api';
-import { Student, ApiResponse } from '../types';
+import type { Student } from '../types';
+
+interface RegisterStudentResponse {
+    message: string;
+    student_id?: number;
+}
 
 export const studentService = {
     /**
      * Register a new student with face image
      */
-    async register(name: string, rollNumber: string, faceImage: Blob): Promise<ApiResponse<{ student_id: number; message: string }>> {
+    async register(name: string, rollNumber: string, faceImage: Blob): Promise<RegisterStudentResponse> {
         const formData = new FormData();
         formData.append('name', name);
         formData.append('roll_number', rollNumber);
         formData.append('file', faceImage, 'face.jpg');
 
-        const response = await apiClient.post<ApiResponse<{ student_id: number; message: string }>>(
+        const response = await apiClient.post<RegisterStudentResponse>(
             '/api/attendance/register',
             formData,
             {

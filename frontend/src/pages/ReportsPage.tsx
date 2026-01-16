@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { GlassCard, GlassButton } from '../styles/glassmorphism';
-import { API_ENDPOINTS } from '../utils/api';
+import { attendanceService } from '../services/attendanceService';
+import type { AttendanceLogEntry } from '../types';
 
 const Container = styled.div`
   padding: 32px;
@@ -25,18 +26,17 @@ const Table = styled.table`
 `;
 
 const ReportsPage = () => {
-    const [logs, setLogs] = useState<{id: number; student_name: string; status: string; timestamp: string; notes?: string}[]>([]);
+    const [logs, setLogs] = useState<AttendanceLogEntry[]>([]);
     
     useEffect(() => {
-        fetch(API_ENDPOINTS.GET_ATTENDANCE_LOGS)
-            .then(res => res.json())
+        attendanceService.getLogs()
             .then(data => setLogs(data))
             .catch(err => console.error(err));
     }, []);
 
     const downloadCSV = () => {
-        const headers = "ID,Name,Status,Time,Notes\n";
-        const rows = logs.map(l => `${l.id},${l.student_name},${l.status},${l.timestamp},${l.notes || ''}`).join("\n");
+        const headers = "ID,Name,Roll No,Status,Time\n";
+        const rows = logs.map(l => `${l.id},${l.student_name},${l.roll_number},${l.status},${l.timestamp}`).join("\n");
         const blob = new Blob([headers + rows], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -58,6 +58,7 @@ const ReportsPage = () => {
                         <tr>
                             <th>Log ID</th>
                             <th>Student Name</th>
+                            <th>Roll No</th>
                             <th>Status</th>
                             <th>Time</th>
                         </tr>
@@ -67,6 +68,7 @@ const ReportsPage = () => {
                             <tr key={log.id}>
                                 <td>#{log.id}</td>
                                 <td>{log.student_name}</td>
+                                <td>{log.roll_number}</td>
                                 <td>
                                     <span style={{
                                         padding: '4px 8px', 

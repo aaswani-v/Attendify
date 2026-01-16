@@ -3,17 +3,18 @@
  * Centralized HTTP client with interceptors for authentication and error handling
  */
 
-import axios, { AxiosError, AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
-import { API_BASE_URL, TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY, API_ENDPOINTS } from './constants';
+import axios, { AxiosError } from 'axios';
+import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+import { API_BASE_URL, TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from './constants';
 import type { ApiResponse, ApiError } from '../types';
 
 // Re-export for backward compatibility
-export { API_ENDPOINTS };
+export { API_ENDPOINTS } from './constants';
 
 /**
  * Create Axios instance with base configuration
  */
-const api: AxiosInstance = axios.create({
+const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
   headers: {
@@ -42,7 +43,7 @@ api.interceptors.request.use(
   },
   (error: AxiosError) => {
     console.error('[API Request Error]', error);
-    return Promise.reject(error);
+    throw error;
   }
 );
 
@@ -92,7 +93,7 @@ api.interceptors.response.use(
       } catch (refreshError) {
         // Refresh failed - logout user
         handleLogout();
-        return Promise.reject(refreshError);
+        throw refreshError;
       }
     }
 
@@ -103,7 +104,7 @@ api.interceptors.response.use(
       details: error.response?.data?.details,
     };
 
-    return Promise.reject(apiError);
+    throw apiError;
   }
 );
 
@@ -117,19 +118,35 @@ const handleLogout = () => {
   localStorage.removeItem(USER_KEY);
   
   // Redirect to login page
-  if (window.location.pathname !== '/login' && window.location.pathname !== '/') {
-    window.location.href = '/login';
+  const { location } = globalThis;
+  if (location.pathname !== '/login' && location.pathname !== '/') {
+    location.href = '/login';
   }
 };
 
 /**
  * Helper function to handle API responses
  */
-export const handleApiResponse = <T>(response: AxiosResponse<ApiResponse<T>>): T => {
-  if (response.data.success && response.data.data !== undefined) {
-    return response.data.data;
+const isApiResponse = <T>(data: unknown): data is ApiResponse<T> => {
+  return typeof data === 'object' && data !== null && 'success' in (data as Record<string, unknown>);
+};
+
+export const handleApiResponse = <T>(response: AxiosResponse<T | ApiResponse<T>>): T => {
+  const payload = response.data;
+
+  if (isApiResponse<T>(payload)) {
+    if (payload.success) {
+      if (payload.data !== undefined) {
+        return payload.data;
+      }
+      return ({ ...(payload as unknown as Record<string, unknown>) } as unknown) as T;
+    }
+
+    const message = payload.message || payload.error || 'API request failed';
+    throw new Error(message);
   }
-  throw new Error(response.data.message || 'API request failed');
+
+  return payload as T;
 };
 
 /**
@@ -143,12 +160,7 @@ export const handleApiError = (error: unknown): never => {
   throw error;
 };
 
+export const apiClient = api;
+
 export default api;
 
-export const formatTime = (period: number): string => {
-  return PERIODS[period] || '';
-};
-
-export const formatDay = (day: number): string => {
-  return DAYS[day] || '';
-};

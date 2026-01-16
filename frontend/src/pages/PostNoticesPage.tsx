@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { GlassCard, GlassButton, GlassInput } from '../styles/glassmorphism';
-import { API_ENDPOINTS } from '../utils/api';
+import { API_ENDPOINTS, apiClient } from '../utils/api';
+import type { Notice } from '../types';
 
 const Container = styled.div`
   padding: 32px;
@@ -21,14 +22,6 @@ const NoticeCard = styled(GlassCard)`
   span { font-size: 12px; opacity: 0.6; }
 `;
 
-interface Notice {
-    id: number;
-    title: string;
-    content: string;
-    date: string;
-    author: string;
-}
-
 const PostNoticesPage = () => {
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
@@ -45,11 +38,8 @@ const PostNoticesPage = () => {
 
     const fetchNotices = async () => {
         try {
-            const res = await fetch(API_ENDPOINTS.GET_NOTICES);
-            if (res.ok) {
-                const data = await res.json();
-                setNotices(data);
-            }
+            const res = await apiClient.get<Notice[]>(API_ENDPOINTS.GET_NOTICES);
+            setNotices(res.data);
         } catch (error) {
             console.error(error);
         }
@@ -59,16 +49,14 @@ const PostNoticesPage = () => {
         e.preventDefault();
         setLoading(true);
         try {
-            const res = await fetch(API_ENDPOINTS.CREATE_NOTICE, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title, content, author: 'Faculty' })
+            await apiClient.post(API_ENDPOINTS.CREATE_NOTICE, {
+                title, 
+                content, 
+                author: 'Faculty' 
             });
-            if (res.ok) {
-                setTitle('');
-                setContent('');
-                fetchNotices();
-            }
+            setTitle('');
+            setContent('');
+            fetchNotices();
         } catch (error) {
             console.error(error);
         } finally {
@@ -79,8 +67,8 @@ const PostNoticesPage = () => {
     const handleDelete = async (id: number) => {
         if(!confirm('Delete this notice?')) return;
         try {
-            const res = await fetch(API_ENDPOINTS.DELETE_NOTICE(id), { method: 'DELETE' });
-            if (res.ok) fetchNotices();
+            await apiClient.delete(API_ENDPOINTS.DELETE_NOTICE(id));
+            fetchNotices();
         } catch(error) { console.error(error); }
     }
 
