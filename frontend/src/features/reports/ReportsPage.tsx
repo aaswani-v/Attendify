@@ -1,152 +1,89 @@
-import React, { useState } from 'react';
-import './ReportsPage.css';
+import React, { useEffect, useState } from 'react';
+import styled from 'styled-components';
+import { GlassCard, GlassButton } from '../../styles/glassmorphism';
+import { API_ENDPOINTS } from '../../utils/api';
+
+const Container = styled.div`
+  padding: 32px;
+`;
+
+const Table = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  
+  th, td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  
+  th {
+    font-weight: 600;
+    opacity: 0.8;
+  }
+`;
 
 const ReportsPage = () => {
-    const [selectedClass, setSelectedClass] = useState('All Classes');
-    const [selectedPeriod, setSelectedPeriod] = useState('This Semester');
-    const [selectedFormat, setSelectedFormat] = useState('PDF');
+    const [logs, setLogs] = useState<any[]>([]);
+    
+    useEffect(() => {
+        fetch(API_ENDPOINTS.GET_ATTENDANCE_LOGS)
+            .then(res => res.json())
+            .then(data => setLogs(data))
+            .catch(err => console.error(err));
+    }, []);
 
-    // Mock data for class-wise chart
-    const classData = [
-        { name: 'Grade 10A', present: 42, absent: 8 },
-        { name: 'Grade 10B', present: 38, absent: 7 },
-        { name: 'Grade 10C', present: 45, absent: 5 },
-    ];
-
-    const maxVal = 60; // Scale for bars
+    const downloadCSV = () => {
+        const headers = "ID,Name,Status,Time,Notes\n";
+        const rows = logs.map(l => `${l.id},${l.student_name},${l.status},${l.timestamp},${l.notes || ''}`).join("\n");
+        const blob = new Blob([headers + rows], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `attendance_report_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+    }
 
     return (
-        <div className="reports-page">
-            {/** Header Section **/}
-            <div className="rp-header-row">
-                <div className="rp-title">
-                    <h2>Attendance Reports</h2>
-                    <p>Generate and analyze attendance reports</p>
-                </div>
-                <button className="btn-download">
-                    <i className='bx bx-download'></i> Download Report
-                </button>
+        <Container>
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'24px'}}>
+                <h1>📊 Attendance Reports</h1>
+                <GlassButton onClick={downloadCSV}>📥 Export CSV</GlassButton>
             </div>
-
-            {/** Filters Section **/}
-            <div className="rp-card filters-card">
-                <h3>Report Filters</h3>
-                <p>Customize your report parameters</p>
-
-                <div className="filters-row">
-                    <div className="filter-group">
-                        <label>Class</label>
-                        <select
-                            value={selectedClass}
-                            onChange={(e) => setSelectedClass(e.target.value)}
-                        >
-                            <option>All Classes</option>
-                            <option>Grade 10A</option>
-                            <option>Grade 10B</option>
-                            <option>Grade 10C</option>
-                        </select>
-                    </div>
-
-                    <div className="filter-group">
-                        <label>Period</label>
-                        <select
-                            value={selectedPeriod}
-                            onChange={(e) => setSelectedPeriod(e.target.value)}
-                        >
-                            <option>Today</option>
-                            <option>This Week</option>
-                            <option>This Month</option>
-                            <option>This Semester</option>
-                        </select>
-                    </div>
-
-                    <div className="filter-group">
-                        <label>Format</label>
-                        <select
-                            value={selectedFormat}
-                            onChange={(e) => setSelectedFormat(e.target.value)}
-                        >
-                            <option>PDF</option>
-                            <option>Excel</option>
-                            <option>CSV</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            {/** Charts Section **/}
-            <div className="charts-row">
-                {/** Class-wise Attendance Bar Chart **/}
-                <div className="rp-card chart-card">
-                    <div className="card-header">
-                        <h3>Class-wise Attendance</h3>
-                        <p>Attendance comparison across classes</p>
-                    </div>
-
-                    <div className="bar-chart-container">
-                        <div className="y-axis">
-                            <span>60</span>
-                            <span>45</span>
-                            <span>30</span>
-                            <span>15</span>
-                            <span>0</span>
-                        </div>
-                        <div className="bars-area">
-                            {/* Grid Lines */}
-                            <div className="grid-lines">
-                                <div className="line"></div>
-                                <div className="line"></div>
-                                <div className="line"></div>
-                                <div className="line"></div>
-                                <div className="line"></div>
-                            </div>
-
-                            {/* Bars */}
-                            {classData.map((data, index) => (
-                                <div className="class-group" key={index}>
-                                    <div className="bars">
-                                        <div
-                                            className="bar present"
-                                            style={{ height: `${(data.present / maxVal) * 100}%` }}
-                                            title={`Present: ${data.present}`}
-                                        ></div>
-                                        <div
-                                            className="bar absent"
-                                            style={{ height: `${(data.absent / maxVal) * 100}%` }}
-                                            title={`Absent: ${data.absent}`}
-                                        ></div>
-                                    </div>
-                                    <span className="label">{data.name}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="chart-legend">
-                        <div className="legend-item"><span className="dot present"></span>Present</div>
-                        <div className="legend-item"><span className="dot absent"></span>Absent</div>
-                    </div>
-                </div>
-
-                {/** Attendance Distribution Pie Chart **/}
-                <div className="rp-card chart-card">
-                    <div className="card-header">
-                        <h3>Attendance Distribution</h3>
-                        <p>Overall attendance status</p>
-                    </div>
-
-                    <div className="pie-chart-wrapper">
-                        <div className="pie-chart">
-                            <div className="slice" style={{ '--p': 86, '--c': '#22c55e' } as React.CSSProperties}></div>
-                        </div>
-                        <div className="pie-labels">
-                            <span className="pie-label present">Present: 86%</span>
-                            <span className="pie-label absent">Absent: 14%</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+            
+            <GlassCard>
+                <Table>
+                    <thead>
+                        <tr>
+                            <th>Log ID</th>
+                            <th>Student Name</th>
+                            <th>Status</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {logs.map(log => (
+                            <tr key={log.id}>
+                                <td>#{log.id}</td>
+                                <td>{log.student_name}</td>
+                                <td>
+                                    <span style={{
+                                        padding: '4px 8px', 
+                                        borderRadius: '4px', 
+                                        background: log.status === 'Present' ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)',
+                                        color: log.status === 'Present' ? '#4caf50' : '#f44336'
+                                    }}>
+                                        {log.status}
+                                    </span>
+                                </td>
+                                <td>{new Date(log.timestamp).toLocaleString()}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </Table>
+            </GlassCard>
+        </Container>
     );
 };
 

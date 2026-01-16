@@ -1,128 +1,85 @@
-import { useState, useEffect } from 'react';
-import './ProfilePage.css';
+import React from 'react';
+import styled from 'styled-components';
+import { GlassCard, GlassButton, Grid } from '../../styles/glassmorphism';
+
+const Container = styled.div`
+  padding: 32px;
+`;
+
+const ProfileHeader = styled(GlassCard)`
+  text-align: center;
+  padding: 40px;
+  margin-bottom: 32px;
+  
+  .avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #a78bfa 0%, #3b82f6 100%);
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    font-weight: bold;
+    color: white;
+  }
+`;
+
+const InfoGroup = styled.div`
+  margin-bottom: 16px;
+  label { opacity: 0.7; font-size: 14px; display: block; margin-bottom: 4px; }
+  div { font-size: 18px; font-weight: 500; }
+`;
 
 const ProfilePage = () => {
-    const [darkMode, setDarkMode] = useState(() => {
-        const saved = localStorage.getItem('darkMode');
-        return saved === 'true';
-    });
-
-    useEffect(() => {
-        document.body.classList.toggle('dark-mode', darkMode);
-        localStorage.setItem('darkMode', String(darkMode));
-    }, [darkMode]);
+    const role = localStorage.getItem('userRole') || 'student';
+    const name = role === 'admin' ? "System Admin" : role === 'faculty' ? "Prof. Albus Dumbledore" : "Harry Potter";
+    const id = role === 'admin' ? "ADM-001" : role === 'faculty' ? "FAC-992" : "STU-2024-001";
 
     return (
-        <div className="profile-page">
-            <div className="pp-header">
-                <h2>Profile Settings</h2>
-                <p>Manage your account and preferences</p>
-            </div>
-
-            {/* Profile Card */}
-            <div className="profile-card">
-                <div className="avatar-section">
-                    <img
-                        src="https://ui-avatars.com/api/?name=Shaheen+Ahmad&background=22c55e&color=fff&size=120"
-                        alt="Profile"
-                        className="profile-avatar"
-                    />
-                    <button className="btn-change-avatar">
-                        <i className='bx bx-camera'></i>
-                    </button>
+        <Container>
+            <ProfileHeader>
+                <div className="avatar">{name.charAt(0)}</div>
+                <h2>{name}</h2>
+                <div style={{ opacity: 0.7, textTransform: 'uppercase', letterSpacing: '1px', fontSize: '14px', marginTop: '8px' }}>
+                    {role}
                 </div>
-                <div className="profile-info">
-                    <h3>Shaheen Uddin Ahmad</h3>
-                    <span className="role-badge">Faculty</span>
-                    <p className="email"><i className='bx bx-envelope'></i> shaheen@attendify.com</p>
-                    <p className="phone"><i className='bx bx-phone'></i> +91 9876543210</p>
-                </div>
-            </div>
-
-            {/* Settings Sections */}
-            <div className="settings-section">
-                <h4>Appearance</h4>
-                <div className="setting-item">
-                    <div className="setting-info">
-                        <i className='bx bx-moon'></i>
-                        <div>
-                            <span className="setting-title">Dark Mode</span>
-                            <span className="setting-desc">Switch between light and dark theme</span>
-                        </div>
+            </ProfileHeader>
+            
+            <Grid columns={2}>
+                <GlassCard>
+                    <h3>📝 Personal Information</h3>
+                    <div style={{ marginTop: '20px' }}>
+                         <InfoGroup>
+                            <label>Full Name</label>
+                            <div>{name}</div>
+                         </InfoGroup>
+                         <InfoGroup>
+                            <label>User ID / Roll Number</label>
+                            <div>{id}</div>
+                         </InfoGroup>
+                         <InfoGroup>
+                            <label>Email</label>
+                            <div>{role}@attendify.edu</div>
+                         </InfoGroup>
+                         <InfoGroup>
+                            <label>Department</label>
+                            <div>Computer Science & Engineering</div>
+                         </InfoGroup>
                     </div>
-                    <label className="toggle-switch">
-                        <input
-                            type="checkbox"
-                            checked={darkMode}
-                            onChange={() => setDarkMode(!darkMode)}
-                        />
-                        <span className="slider"></span>
-                    </label>
-                </div>
-            </div>
-
-            <div className="settings-section">
-                <h4>Account</h4>
-                <div className="setting-item clickable">
-                    <div className="setting-info">
-                        <i className='bx bx-user'></i>
-                        <div>
-                            <span className="setting-title">Edit Profile</span>
-                            <span className="setting-desc">Update your personal information</span>
-                        </div>
+                </GlassCard>
+                
+                <GlassCard>
+                    <h3>⚙️ Settings</h3>
+                    <div style={{ marginTop: '20px', display:'flex', flexDirection:'column', gap:'12px' }}>
+                        <GlassButton>Change Password</GlassButton>
+                        <GlassButton>Notification Preferences</GlassButton>
+                        <GlassButton style={{ background: 'rgba(244, 67, 54, 0.2)', color:'#ff6b6b' }}>Delete Account</GlassButton>
                     </div>
-                    <i className='bx bx-chevron-right'></i>
-                </div>
-                <div className="setting-item clickable">
-                    <div className="setting-info">
-                        <i className='bx bx-lock-alt'></i>
-                        <div>
-                            <span className="setting-title">Change Password</span>
-                            <span className="setting-desc">Update your security credentials</span>
-                        </div>
-                    </div>
-                    <i className='bx bx-chevron-right'></i>
-                </div>
-                <div className="setting-item clickable">
-                    <div className="setting-info">
-                        <i className='bx bx-bell'></i>
-                        <div>
-                            <span className="setting-title">Notifications</span>
-                            <span className="setting-desc">Manage notification preferences</span>
-                        </div>
-                    </div>
-                    <i className='bx bx-chevron-right'></i>
-                </div>
-            </div>
-
-            <div className="settings-section">
-                <h4>Support</h4>
-                <div className="setting-item clickable">
-                    <div className="setting-info">
-                        <i className='bx bx-help-circle'></i>
-                        <div>
-                            <span className="setting-title">Help & Support</span>
-                            <span className="setting-desc">Get help with using Attendify</span>
-                        </div>
-                    </div>
-                    <i className='bx bx-chevron-right'></i>
-                </div>
-                <div className="setting-item clickable">
-                    <div className="setting-info">
-                        <i className='bx bx-info-circle'></i>
-                        <div>
-                            <span className="setting-title">About</span>
-                            <span className="setting-desc">Version 1.0.0</span>
-                        </div>
-                    </div>
-                    <i className='bx bx-chevron-right'></i>
-                </div>
-            </div>
-
-            <button className="btn-logout">
-                <i className='bx bx-log-out'></i> Logout
-            </button>
-        </div>
+                </GlassCard>
+            </Grid>
+        </Container>
     );
 };
 
