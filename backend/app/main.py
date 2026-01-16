@@ -37,8 +37,11 @@ app.add_middleware(
 )
 
 # Include routers
+from app.api.routes import notices
 app.include_router(timetable_router)
 app.include_router(attendance_router, prefix="/api/attendance")
+app.include_router(notices.router, prefix="/api/notices")
+
 
 # ==================== SEEDING & UTILITIES ====================
 

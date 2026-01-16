@@ -1,124 +1,145 @@
-import React, { useState } from 'react';
-import './PostNoticesPage.css';
+import React, { useState, useEffect } from 'react';
+import styled from 'styled-components';
+import { GlassCard, GlassButton, GlassInput, Grid } from '../../styles/glassmorphism';
+import { API_ENDPOINTS } from '../../utils/api';
+
+const Container = styled.div`
+  padding: 32px;
+`;
+
+const NoticeList = styled.div`
+  margin-top: 32px;
+`;
+
+const NoticeCard = styled(GlassCard)`
+  padding: 20px;
+  margin-bottom: 16px;
+  position: relative;
+  
+  h3 { margin-bottom: 8px; }
+  p { opacity: 0.8; font-size: 14px; margin-bottom: 12px; }
+  span { font-size: 12px; opacity: 0.6; }
+`;
+
+interface Notice {
+    id: number;
+    title: string;
+    content: string;
+    date: string;
+    author: string;
+}
 
 const PostNoticesPage = () => {
-    const [isCreating, setIsCreating] = useState(false);
+    const [title, setTitle] = useState('');
+    const [content, setContent] = useState('');
+    const [notices, setNotices] = useState<Notice[]>([]);
+    const [loading, setLoading] = useState(false);
 
-    // Mock data based on design
-    const [notices, setNotices] = useState([
-        {
-            id: 1,
-            title: 'Mid-term Exam Schedule',
-            date: '2026-01-10',
-            author: 'Admin Department',
-            content: 'Mid-term examinations will be held from March 1-15. Please check the detailed schedule on the portal.',
-            priority: 'High'
-        },
-        {
-            id: 2,
-            title: 'Parent-Teacher Meeting',
-            date: '2026-01-12',
-            author: 'Principal Office',
-            content: 'Parent-teacher meeting scheduled for February 20. All parents are requested to attend.',
-            priority: 'Medium'
-        },
-        {
-            id: 3,
-            title: 'Library Hours Extended',
-            date: '2026-01-14',
-            author: 'Library Department',
-            content: 'Library hours have been extended till 6 PM for exam preparation.',
-            priority: 'Low'
-        }
-    ]);
+    useEffect(() => {
+        fetchNotices();
+    }, []);
 
-    const getPriorityClass = (priority: string) => {
-        switch (priority) {
-            case 'High': return 'priority-badge high';
-            case 'Medium': return 'priority-badge medium';
-            default: return 'priority-badge low';
+    const fetchNotices = async () => {
+        try {
+            const res = await fetch(API_ENDPOINTS.GET_NOTICES);
+            if (res.ok) {
+                const data = await res.json();
+                setNotices(data);
+            }
+        } catch (error) {
+            console.error(error);
         }
     };
 
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            const res = await fetch(API_ENDPOINTS.CREATE_NOTICE, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, content, author: 'Faculty' })
+            });
+            if (res.ok) {
+                setTitle('');
+                setContent('');
+                fetchNotices();
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDelete = async (id: number) => {
+        if(!confirm('Delete this notice?')) return;
+        try {
+            const res = await fetch(API_ENDPOINTS.DELETE_NOTICE(id), { method: 'DELETE' });
+            if (res.ok) fetchNotices();
+        } catch(error) { console.error(error); }
+    }
+
     return (
-        <div className="notices-page">
-            {/* Header */}
-            <div className="np-header-row">
-                <div className="np-title">
-                    <h2>Notice Board</h2>
-                    <p>Post and manage announcements</p>
-                </div>
-                {!isCreating && (
-                    <button className="btn-new-notice" onClick={() => setIsCreating(true)}>
-                        <i className='bx bx-plus'></i> New Notice
-                    </button>
-                )}
-            </div>
-
-            {/* List View */}
-            {!isCreating && (
-                <div className="notices-list">
-                    {notices.map((notice) => (
-                        <div className="notice-card" key={notice.id}>
-                            <div className="notice-header">
-                                <div className="notice-meta-top">
-                                    <h3>{notice.title}</h3>
-                                    <span className={getPriorityClass(notice.priority)}>
-                                        {notice.priority} Priority
-                                    </span>
-                                </div>
-                                <div className="notice-meta-sub">
-                                    <i className='bx bx-calendar'></i> {notice.date} • Posted by {notice.author}
-                                </div>
-                            </div>
-                            <div className="notice-content">
-                                <p>{notice.content}</p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            {/* Create View */}
-            {isCreating && (
-                <div className="create-notice-form">
-                    <div className="form-card">
-                        <div className="form-header">
-                            <h3>Create New Notice</h3>
-                            <p>Post an announcement for students</p>
-                        </div>
-
-                        <div className="form-group">
-                            <label>Title</label>
-                            <input type="text" placeholder="Enter notice title" />
-                        </div>
-
-                        <div className="form-group">
-                            <label>Content</label>
-                            <textarea rows={4} placeholder="Enter notice content"></textarea>
-                        </div>
-
-                        <div className="form-group">
-                            <label>Priority</label>
-                            <select>
-                                <option>High Priority</option>
-                                <option>Medium Priority</option>
-                                <option>Low Priority</option>
-                            </select>
-                        </div>
-
-                        <div className="form-actions">
-                            <button className="btn-post" onClick={() => setIsCreating(false)}>
-                                <i className='bx bx-send'></i> Post Notice
-                            </button>
-                            <button className="btn-cancel" onClick={() => setIsCreating(false)}>
-                                Cancel
-                            </button>
-                        </div>
+        <Container>
+            <h1>📢 Post Notices Interface</h1>
+            
+            <GlassCard>
+                <form onSubmit={handleSubmit}>
+                    <div style={{ marginBottom: '16px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px' }}>Title</label>
+                        <GlassInput 
+                            value={title} 
+                            onChange={e => setTitle(e.target.value)} 
+                            placeholder="Notice Title" 
+                            required
+                        />
                     </div>
-                </div>
-            )}
-        </div>
+                    <div style={{ marginBottom: '16px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px' }}>Message</label>
+                        <textarea 
+                            value={content} 
+                            onChange={e => setContent(e.target.value)} 
+                            placeholder="Write notice content here..." 
+                            required
+                            style={{ 
+                                width: '100%', 
+                                padding: '12px', 
+                                background: 'rgba(255,255,255,0.1)', 
+                                border: '1px solid rgba(255,255,255,0.2)', 
+                                borderRadius: '8px',
+                                color: 'inherit',
+                                minHeight: '100px'
+                            }}
+                        />
+                    </div>
+                    <GlassButton disabled={loading}>
+                        {loading ? 'Posting...' : '🚀 Post Notice'}
+                    </GlassButton>
+                </form>
+            </GlassCard>
+
+            <NoticeList>
+                <h2>Recent Notices</h2>
+                {notices.length === 0 ? <p style={{opacity:0.6}}>No notices posted yet.</p> : (
+                    notices.map(notice => (
+                        <NoticeCard key={notice.id}>
+                            <h3>{notice.title}</h3>
+                            <p>{notice.content}</p>
+                            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                                <span>Posted by {notice.author} on {new Date(notice.date).toLocaleDateString()}</span>
+                                <button 
+                                    onClick={() => handleDelete(notice.id)}
+                                    style={{background:'transparent', border:'none', color:'#ff6b6b', cursor:'pointer'}}
+                                >
+                                    🗑️ Delete
+                                </button>
+                            </div>
+                        </NoticeCard>
+                    ))
+                )}
+            </NoticeList>
+        </Container>
     );
 };
 

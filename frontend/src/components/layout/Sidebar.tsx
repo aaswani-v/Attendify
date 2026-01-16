@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import './Sidebar.css';
 
 interface SidebarProps {
-    role: 'student' | 'faculty';
+    role: 'student' | 'faculty' | 'admin';
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ role }) => {
@@ -32,7 +32,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role }) => {
                             </li>
                         </>
                     )}
-                    {role === 'faculty' && (
+                    {(role === 'faculty' || role === 'admin') && (
                         <>
                             <li>
                                 <NavLink to="/dashboard/mark-attendance" className={({ isActive }) => isActive ? 'active' : ''}>
