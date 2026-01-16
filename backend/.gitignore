@@ -30,3 +30,7 @@ dev-dist
 
 # Vite cache
 /.cache
+
+# Python cache
+__pycache__/*
+*.pyc

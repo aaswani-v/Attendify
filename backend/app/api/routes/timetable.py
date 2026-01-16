@@ -6,7 +6,6 @@ Enterprise-grade REST API endpoints for timetable management
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from typing import List
-from app.models.attendance import SessionLocal
 from app.models.timetable import Teacher, Room, Subject, ClassGroup, TimetableEntry, teacher_subject
 from app.schemas.timetable import (
     TeacherCreate, TeacherResponse, RoomCreate, RoomResponse,
@@ -15,6 +14,8 @@ from app.schemas.timetable import (
 )
 from app.services.timetable_solver import TimetableSolver
 from app.core.database import get_db
+
+router = APIRouter(prefix="/api/timetable", tags=["Timetable"])
 
 # ==================== TEACHER ENDPOINTS ====================
 
