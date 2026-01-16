@@ -5,7 +5,7 @@ SQLAlchemy models for timetable generation system
 
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Table
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-from models import Base
+from app.core.database import Base
 
 # Association table for Teacher-Subject many-to-many relationship
 teacher_subject = Table(
