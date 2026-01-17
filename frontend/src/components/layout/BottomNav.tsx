@@ -25,6 +25,10 @@ const BottomNav: React.FC<BottomNavProps> = ({ role }) => {
                             <i className='bx bx-scan'></i>
                             <span>Mark Attendance</span>
                         </NavLink>
+                        <NavLink to="/dashboard/face-recognition" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                            <i className='bx bx-face'></i>
+                            <span>Face Recognition</span>
+                        </NavLink>
                         <NavLink to="/dashboard/students" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                             <i className='bx bx-user'></i>
                             <span>Students</span>

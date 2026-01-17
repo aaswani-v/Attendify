@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { attendanceService } from '../services/attendanceService';
 import { studentService } from '../services/studentService';
 import { fingerprintScanner, fingerprintUtils } from '../services/fingerprintScanner';
+import FaceRecognitionAttendance from '../components/FaceRecognitionAttendance';
 import type { Student } from '../types';
 import './MarkAttendancePage.css';
 
@@ -346,20 +347,31 @@ const MarkAttendancePage = () => {
                         </div>
                     ) : (
                         <div className="camera-feed-card">
-                            <div className="video-container">
-                                <video ref={videoRef} autoPlay playsInline muted />
-                                {scanning && (
-                                    <div className="scan-overlay">
-                                        <div className="scan-line"></div>
-                                        <span>Scanning for faces...</span>
-                                    </div>
-                                )}
-                            </div>
-                            <div className="camera-controls">
+                            {/* Enterprise Face Recognition Component */}
+                            <FaceRecognitionAttendance
+                                autoStart={true}
+                                onSuccess={(studentName, confidence) => {
+                                    setDetectedStudents([studentName]);
+                                    setStatusMessage(`✅ Attendance marked for ${studentName} (${confidence.toFixed(1)}% confidence)`);
+                                    setRequireBiometric(false);
+                                }}
+                                onError={(error) => {
+                                    setStatusMessage(`❌ ${error}`);
+                                    setDetectedStudents([]);
+                                }}
+                                onBiometricRequired={(data) => {
+                                    setRequireBiometric(true);
+                                    setPendingFaceData(data);
+                                    setStatusMessage('🔐 Biometric verification required');
+                                }}
+                            />
+                            
+                            <div className="camera-controls" style={{ marginTop: '20px' }}>
                                 <button
                                     className="btn-control btn-scan"
                                     onClick={handleStartScan}
                                     disabled={scanning}
+                                    style={{ display: 'none' }}
                                 >
                                     {scanning ? (
                                         <><i className='bx bx-loader-alt bx-spin'></i><span> Scanning...</span></>

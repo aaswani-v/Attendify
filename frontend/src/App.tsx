@@ -16,6 +16,7 @@ import StudentsPage from './pages/StudentsPage';
 import ManageCoursesPage from './pages/ManageCoursesPage';
 import ManageUsersPage from './pages/ManageUsersPage';
 import FaceRecognitionDemo from './pages/FaceRecognitionDemo';
+import FaceRecognitionPage from './pages/FaceRecognitionPage';
 import './App.css';
 
 function App() {
@@ -45,6 +46,7 @@ function App() {
             <Route path="manage-courses" element={<ManageCoursesPage />} />
             <Route path="manage-users" element={<ManageUsersPage />} />
             <Route path="face-demo" element={<FaceRecognitionDemo />} />
+            <Route path="face-recognition" element={<FaceRecognitionPage />} />
           </Route>
 
         </Routes>
