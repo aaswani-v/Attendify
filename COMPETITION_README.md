@@ -34,13 +34,13 @@ real-time anomaly detection, and comprehensive analytics for educational institu
 ✅ **Session Management**
 - Class-based attendance sessions
 - Session lifecycle (PENDING/ACTIVE/ENDED)
-- Duplicate prevention per session
+- Duplicate prevenession
 - Faculty-controlled session management
 
 ✅ **Real-Time Analytics Dashboard**
 - Live security monitoring
 - Attendance trends & statistics
-- Risk assessment & critical alerts
+- Risk assessment & critical alertstion per s
 - Comprehensive reporting
 
 ## 🏗️ Architecture

@@ -141,11 +141,11 @@ const StatCard = styled.div<{ variant?: string }>`
 const SecurityScore = styled.div<{ score: number }>`
   font-size: 2.5rem;
   font-weight: 800;
-  background: ${props => 
-    props.score >= 90 ? 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)' :
-    props.score >= 70 ? 'linear-gradient(135deg, #f7971e 0%, #ffd200 100%)' :
-    'linear-gradient(135deg, #eb3349 0%, #f45c43 100%)'
-  };
+  background: ${props => {
+    if (props.score >= 90) return 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)';
+    if (props.score >= 70) return 'linear-gradient(135deg, #f7971e 0%, #ffd200 100%)';
+    return 'linear-gradient(135deg, #eb3349 0%, #f45c43 100%)';
+  }};
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -460,8 +460,8 @@ const AnalyticsDashboard: React.FC = () => {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie data={pieData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={5} dataKey="value">
-                  {pieData.map((_: any, index: number) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  {pieData.map((entry: any, index: number) => (
+                    <Cell key={`cell-${entry.name}-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -546,8 +546,11 @@ const AnalyticsDashboard: React.FC = () => {
                     <td>{a.status}</td>
                     <td>{a.confidence ? `${a.confidence.toFixed(1)}%` : '-'}</td>
                     <td>
-                      <RiskBadge level={a.anomaly_reason?.includes('🚨') ? 'CRITICAL' : 
-                        a.anomaly_reason?.includes('🔴') ? 'HIGH' : 'MEDIUM'}>
+                      <RiskBadge level={
+                        a.anomaly_reason?.includes('🚨') ? 'CRITICAL' : 
+                        a.anomaly_reason?.includes('🔴') ? 'HIGH' : 
+                        'MEDIUM'
+                      }>
                         {a.anomaly_reason?.split(',')[0] || 'Unknown'}
                       </RiskBadge>
                     </td>

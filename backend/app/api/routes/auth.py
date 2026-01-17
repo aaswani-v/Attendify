@@ -3,7 +3,7 @@ Authentication Routes
 Handles user login, registration, and token management
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status

@@ -241,14 +241,27 @@ def root():
             "Liveness Detection (Anti-Spoofing)",
             "Proxy Detection",
             "Manual Override",
-            "Configurable Thresholds"
+            "Configurable Thresholds",
+            "Enterprise Anomaly Detection",
+            "Real-time Analytics Dashboard",
+            "Risk Scoring System"
         ],
         "endpoints": {
             "attendance": "/api/attendance/*",
             "sessions": "/api/sessions/*",
+            "analytics": "/api/analytics/*",
             "docs": "/docs"
         },
         "thresholds": thresholds.to_dict()
+    }
+
+@app.get("/health")
+def health_check():
+    """Health check endpoint for monitoring"""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "database": "connected"
     }
 
 @app.get("/api/config")
