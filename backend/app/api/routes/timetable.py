@@ -20,6 +20,7 @@ from app.schemas.timetable import (
 )
 from app.services.timetable_solver import TimetableSolver
 from app.core.database import get_db
+from app.api.routes.auth import require_admin
 from app.core.logging import logger
 from app.core.config import config
 
@@ -108,7 +109,7 @@ def delete_room(room_id: int, db: Session = Depends(get_db)):
 # ==================== SUBJECT ENDPOINTS ====================
 
 @router.post("/subjects", response_model=SubjectResponse)
-def create_subject(subject: SubjectCreate, db: Session = Depends(get_db)):
+def create_subject(subject: SubjectCreate, db: Session = Depends(get_db), _: dict = Depends(require_admin)):
     """Create a new subject"""
     db_subject = Subject(
         name=subject.name,
@@ -147,7 +148,7 @@ def get_subjects(db: Session = Depends(get_db)):
     return result
 
 @router.delete("/subjects/{subject_id}")
-def delete_subject(subject_id: int, db: Session = Depends(get_db)):
+def delete_subject(subject_id: int, db: Session = Depends(get_db), _: dict = Depends(require_admin)):
     """Delete a subject"""
     subject = db.query(Subject).filter(Subject.id == subject_id).first()
     if not subject:

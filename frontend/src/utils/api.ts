@@ -98,10 +98,18 @@ api.interceptors.response.use(
     }
 
     // Handle other errors
+    const responseData = error.response?.data as
+      | { message?: string; detail?: string; details?: Record<string, unknown> }
+      | undefined;
+
     const apiError: ApiError = {
-      message: error.response?.data?.message || error.message || 'An unexpected error occurred',
+      message:
+        responseData?.message ||
+        responseData?.detail ||
+        error.message ||
+        'An unexpected error occurred',
       code: error.code,
-      details: error.response?.data?.details,
+      details: responseData?.details,
     };
 
     throw apiError;
@@ -146,7 +154,7 @@ export const handleApiResponse = <T>(response: AxiosResponse<T | ApiResponse<T>>
     throw new Error(message);
   }
 
-  return payload as T;
+  return payload;
 };
 
 /**

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { userService, type UserRecord } from '../services/userService';
 import type { UserRole } from '../types/auth.types';
+import { TOKEN_KEY } from '../utils/constants';
 import './ManageUsersPage.css';
 
 const defaultNewUser = { username: '', password: '', role: 'STUDENT' as UserRole, email: '', full_name: '' };
@@ -12,21 +13,39 @@ const ManageUsersPage = () => {
     const [creating, setCreating] = useState(false);
     const [newUser, setNewUser] = useState({ ...defaultNewUser });
 
+    const storedRole = (localStorage.getItem('userRole') || '').toUpperCase();
+    const isAdmin = storedRole === 'ADMIN';
+    const hasToken = !!localStorage.getItem(TOKEN_KEY);
+
     const loadUsers = async () => {
         try {
             setLoading(true);
             const data = await userService.list();
             setUsers(data);
+            setError(null);
         } catch (err: any) {
-            setError(err?.response?.data?.detail || 'Failed to load users');
+            const detail = err?.response?.data?.detail || err?.message || 'Failed to load users';
+            setError(detail);
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
+        if (!isAdmin) {
+            setLoading(false);
+            setError('Admin access required to view and manage users.');
+            return;
+        }
+
+        if (!hasToken) {
+            setLoading(false);
+            setError('You are not authenticated. Please log in again.');
+            return;
+        }
+
         loadUsers();
-    }, []);
+    }, [isAdmin, hasToken]);
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -64,6 +83,23 @@ const ManageUsersPage = () => {
         }
     };
 
+    if (!isAdmin) {
+        return (
+            <div className="manage-users-page">
+                <div className="mup-header">
+                    <div>
+                        <h1>Manage Users</h1>
+                        <p>Admin only: Add or remove users.</p>
+                    </div>
+                </div>
+                <div className="mup-card" style={{ marginTop: '16px' }}>
+                    <p>{error || 'You need admin privileges to view this page.'}</p>
+                    <button className="btn-primary" onClick={() => { globalThis.location.href = '/login'; }}>Go to Login</button>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="manage-users-page">
             <div className="mup-header">
@@ -76,11 +112,9 @@ const ManageUsersPage = () => {
             <div className="mup-grid">
                 <section className="mup-card">
                     <h3>Current Users</h3>
-                    {loading ? (
-                        <p>Loading...</p>
-                    ) : users.length === 0 ? (
-                        <p>No users found.</p>
-                    ) : (
+                    {loading && <p>Loading...</p>}
+                    {!loading && users.length === 0 && <p>No users found.</p>}
+                    {!loading && users.length > 0 && (
                         <div className="mup-table-wrapper">
                             <table className="mup-table">
                                 <thead>
@@ -121,16 +155,18 @@ const ManageUsersPage = () => {
                     <h3>Create User</h3>
                     <form className="mup-form" onSubmit={handleCreate}>
                         <div className="form-row">
-                            <label>Username</label>
+                            <label htmlFor="new-username">Username</label>
                             <input
+                                id="new-username"
                                 value={newUser.username}
                                 onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
                                 required
                             />
                         </div>
                         <div className="form-row">
-                            <label>Password</label>
+                            <label htmlFor="new-password">Password</label>
                             <input
+                                id="new-password"
                                 type="password"
                                 value={newUser.password}
                                 onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
@@ -138,8 +174,9 @@ const ManageUsersPage = () => {
                             />
                         </div>
                         <div className="form-row">
-                            <label>Role</label>
+                            <label htmlFor="new-role">Role</label>
                             <select
+                                id="new-role"
                                 value={newUser.role}
                                 onChange={(e) => setNewUser({ ...newUser, role: e.target.value as UserRole })}
                             >
@@ -149,16 +186,18 @@ const ManageUsersPage = () => {
                             </select>
                         </div>
                         <div className="form-row">
-                            <label>Email</label>
+                            <label htmlFor="new-email">Email</label>
                             <input
+                                id="new-email"
                                 type="email"
                                 value={newUser.email}
                                 onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
                             />
                         </div>
                         <div className="form-row">
-                            <label>Full Name</label>
+                            <label htmlFor="new-full-name">Full Name</label>
                             <input
+                                id="new-full-name"
                                 value={newUser.full_name}
                                 onChange={(e) => setNewUser({ ...newUser, full_name: e.target.value })}
                             />

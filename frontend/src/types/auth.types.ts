@@ -5,14 +5,17 @@
 export type UserRole = 'STUDENT' | 'FACULTY' | 'ADMIN';
 
 export interface User {
-  id: string;
-  email: string;
+  id: number;
+  email: string | null;
   username: string;
   role: UserRole;
-  name?: string;
+  name?: string | null;
+  full_name?: string | null;
   department?: string;
   student_id?: string;
   faculty_id?: string;
+  is_active?: boolean;
+  created_at?: string;
 }
 
 export interface LoginCredentials {
