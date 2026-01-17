@@ -13,11 +13,15 @@ try:
         if os.path.exists(service_account_path):
             cred = credentials.Certificate(service_account_path)
             firebase_admin.initialize_app(cred)
+            print("[INFO] Firebase Auth initialized with service account file")
         else:
-            print("Warning: Firebase service account not found. Firebase Auth will not work.")
-            # Optionally initialize with default credentials for cloud environments
-            # firebase_admin.initialize_app()
-except ValueError:
+            print("[INFO] Firebase service account file not found, attempting default credentials...")
+            # Try initializing with default credentials (config from env vars or cloud environment)
+            firebase_admin.initialize_app()
+            print("[INFO] Firebase Auth initialized with default credentials")
+except Exception as e:
+    print(f"[WARNING] Firebase Auth initialization failed: {e}")
+    print("Firebase Auth will not work. Ensure GOOGLE_APPLICATION_CREDENTIALS is set or service-account.json exists.")
     pass
 
 def verify_firebase_token(id_token: str):

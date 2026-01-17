@@ -1,5 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from sqlalchemy.orm import Session
+from sqlalchemy import func, cast, Date, desc, or_
+from datetime import timedelta
 from pydantic import BaseModel
 from typing import Optional, List
 from app.core.database import get_db
@@ -17,7 +19,8 @@ from pathlib import Path
 router = APIRouter()
 
 # Base path for face images
-DATA_FACE_DIR = Path(__file__).resolve().parent.parent.parent.parent / "models" / "_data-face"
+# backend/app/api/routes -> backend/app -> backend/app/models
+DATA_FACE_DIR = Path(__file__).resolve().parent.parent.parent / "models" / "_data-face"
 
 
 # ========== Pydantic Schemas ==========
@@ -140,9 +143,6 @@ async def mark_attendance(
         # Face Verification
         verify_result = face_service.verify_student(frame_bytes)
         
-        if verify_result.get("status") == "error":
-            raise HTTPException(500, verify_result["message"])
-        
         # Initialize response values
         status = "Unknown"
         confidence = verify_result.get("confidence", 0.0)
@@ -155,29 +155,48 @@ async def mark_attendance(
         db_student = None
         
         # Process verification result
+        biometric_fallback = False
+        
         if verify_result["status"] == "no_face":
-            status = "Failed: No Face Detected"
+            biometric_fallback = True
+            status = "Biometric Required"
+            notes.append("No face detected - please use fingerprint for verification")
         elif verify_result["status"] == "multiple_faces":
-            status = "Proxy Suspected: Multiple Faces"
+            biometric_fallback = True
+            status = "Biometric Required"
             proxy_suspected = True
-            proxy_reason = f"Detected {verify_result.get('face_count', 2)} faces"
+            proxy_reason = f"Detected {verify_result.get('face_count', 2)} faces - please verify with fingerprint"
+            notes.append("Multiple faces detected - fingerprint verification required")
+        elif verify_result["status"] == "error":
+            biometric_fallback = True
+            status = "Biometric Required"
+            notes.append(f"Face detection error: {verify_result.get('message', verify_result.get('error', 'Unknown error'))} - please use fingerprint for verification")
         elif recognized_name:
             # Face recognized - find in DB
             db_student = db.query(Student).filter(Student.name == recognized_name).first()
             
             if not db_student:
-                status = f"Face Recognized ({recognized_name}) but not in database"
+                biometric_fallback = True
+                status = "Biometric Required"
+                notes.append(f"Face recognized ({recognized_name}) but not in database - please verify with fingerprint")
             else:
                 # Check confidence threshold
                 confidence_label = thresholds.get_confidence_label(confidence)
                 
                 if confidence < thresholds.FACE_CONFIDENCE_REJECT:
-                    status = "Rejected: Low Confidence"
-                    notes.append(f"Confidence {confidence:.1f}% below threshold")
+                    biometric_fallback = True
+                    status = "Biometric Required"
+                    notes.append(f"Face confidence {confidence:.1f}% too low - please verify with fingerprint")
+                elif confidence < thresholds.FACE_CONFIDENCE_BIOMETRIC_REQUIRED:
+                    # Face confidence between 40-60%: Require biometric verification
+                    biometric_fallback = True
+                    status = "Biometric Required"
+                    notes.append(f"Face confidence {confidence:.1f}% < 60% - please verify with fingerprint")
                 else:
+                    # Face confidence >= 60%: Accept with face only
                     status = "Face Verified"
                     
-                    # Multi-factor checks
+                    # Multi-factor checks (optional additional verification)
                     if student_id:
                         if str(db_student.roll_number) != str(student_id) and str(db_student.id) != str(student_id):
                             status = "Proxy Suspected: ID Mismatch"
@@ -189,12 +208,14 @@ async def mark_attendance(
                         if db_student.fingerprint_id != fingerprint_data:
                             status = "Proxy Suspected: Fingerprint Mismatch"
                             proxy_suspected = True
+                            proxy_reason = f"Fingerprint mismatch for {recognized_name}"
                     
                     if id_card_scan:
                         verification_method += "+IDCard"
                         if db_student.id_card_code != id_card_scan:
                             status = "Proxy Suspected: ID Card Mismatch"
                             proxy_suspected = True
+                            proxy_reason = f"ID card mismatch for {recognized_name}"
                 
                 # Check duplicate in session
                 if session_id and db_student and "Verified" in status:
@@ -213,6 +234,48 @@ async def mark_attendance(
                             notes=[f"Already marked at {existing.timestamp}"],
                             session_id=session_id
                         )
+        
+        # Handle biometric fallback - fingerprint or ID card authentication
+        if biometric_fallback:
+            if fingerprint_data:
+                # Try to find student by fingerprint
+                fingerprint_student = db.query(Student).filter(Student.fingerprint_id == fingerprint_data).first()
+                if fingerprint_student:
+                    verification_method = "Fingerprint"
+                    status = "Biometrically Verified"
+                    db_student = fingerprint_student
+                    recognized_name = fingerprint_student.name
+                    confidence = 100.0  # Fingerprint is considered 100% confident
+                    notes.append("Verified by fingerprint only")
+                else:
+                    status = "Rejected: Fingerprint Not Found"
+                    notes.append("Fingerprint not registered in database")
+            
+            elif id_card_scan:
+                # Try to find student by ID card
+                card_student = db.query(Student).filter(Student.id_card_code == id_card_scan).first()
+                if card_student:
+                    verification_method = "ID Card"
+                    status = "ID Card Verified"
+                    db_student = card_student
+                    recognized_name = card_student.name
+                    confidence = 100.0
+                    notes.append("Verified by ID Card only")
+                else:
+                    status = "Rejected: ID Card Not Found"
+                    notes.append("ID Card not registered in database")
+        
+        # Handle case where biometric is required but no verification provided
+        if biometric_fallback and not fingerprint_data and not id_card_scan:
+            return AttendanceMarkResponse(
+                success=False,
+                status="Biometric Required",
+                student_name=recognized_name,
+                confidence=confidence,
+                confidence_label=thresholds.get_confidence_label(confidence) if confidence > 0 else "UNKNOWN",
+                notes=notes,
+                session_id=session_id
+            )
         
         # Create attendance log
         log = AttendanceLog(
@@ -479,6 +542,60 @@ def get_logs(
 def get_students(db: Session = Depends(get_db)):
     """Get all registered students."""
     return db.query(Student).all()
+
+
+@router.get("/stats")
+def get_attendance_stats(db: Session = Depends(get_db)):
+    """
+    Get attendance statistics for dashboard.
+    Returns total students, present today, absent today, and attendance rate.
+    """
+    from datetime import date, timedelta
+    from sqlalchemy import func
+    
+    total_students = db.query(func.count(Student.id)).scalar()
+    
+    # Get today's logs (verified students)
+    today_start = datetime.combine(date.today(), datetime.min.time())
+    today_end = datetime.combine(date.today(), datetime.max.time())
+    
+    present_today = db.query(func.count(AttendanceLog.id.distinct())).filter(
+        AttendanceLog.timestamp >= today_start,
+        AttendanceLog.timestamp <= today_end,
+        AttendanceLog.status.contains("Verified")
+    ).scalar()
+    
+    absent_today = total_students - present_today if total_students > 0 else 0
+    attendance_rate = (present_today / total_students * 100) if total_students > 0 else 0
+    
+    # Weekly trend (last 7 days)
+    weekly_data = []
+    for i in range(7):
+        day = date.today() - timedelta(days=6 - i)
+        day_start = datetime.combine(day, datetime.min.time())
+        day_end = datetime.combine(day, datetime.max.time())
+        
+        day_present = db.query(func.count(AttendanceLog.id.distinct())).filter(
+            AttendanceLog.timestamp >= day_start,
+            AttendanceLog.timestamp <= day_end,
+            AttendanceLog.status.contains("Verified")
+        ).scalar()
+        
+        day_absent = total_students - day_present if total_students > 0 else 0
+        
+        weekly_data.append({
+            "day": day.strftime("%a"),  # Mon, Tue, etc.
+            "present": day_present,
+            "absent": day_absent
+        })
+    
+    return {
+        "total_students": total_students,
+        "present_today": present_today,
+        "absent_today": absent_today,
+        "attendance_rate": round(attendance_rate, 1),
+        "weekly_data": weekly_data
+    }
 
 
 @router.get("/thresholds")

@@ -7,8 +7,21 @@ Enterprise-grade unified system for Attendance Verification & Timetable Generati
 - **Face Recognition Attendance**: Secure biometric attendance verification
 - **AI-Powered Timetable Generation**: Constraint-based scheduling using Google OR-Tools
 - **RESTful API**: FastAPI-based modern API with automatic documentation
-- **Database Integration**: SQLAlchemy ORM with SQLite/PostgreSQL support
+- **Database Integration**: SQLAlchemy ORM with SQLite/PostgreSQL support (Supabase ready)
 - **Enterprise Architecture**: Modular, scalable, and maintainable codebase
+
+## Database Configuration
+
+The system supports both SQLite (default) and PostgreSQL (e.g., Supabase).
+
+### Supabase Setup
+To use Supabase, set the `DATABASE_URL` environment variable in your `.env` file:
+
+```env
+DATABASE_URL=postgresql://user:password@host:port/dbname
+```
+
+If the connection to the configured database fails, the system automatically falls back to the local SQLite database (`attendance.db`).
 
 ## Project Structure
 

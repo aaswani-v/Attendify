@@ -28,18 +28,27 @@ LANDMARKS_AVAILABLE = False
 FACE_MESH = None
 
 try:
-    import mediapipe as mp
-    mp_face_mesh = mp.solutions.face_mesh
-    FACE_MESH = mp_face_mesh.FaceMesh(
-        max_num_faces=1,
-        refine_landmarks=True,
-        min_detection_confidence=0.5,
-        min_tracking_confidence=0.5
-    )
-    LANDMARKS_AVAILABLE = True
-    print("[INFO] MediaPipe FaceMesh loaded for liveness detection")
-except ImportError:
-    print("[WARNING] MediaPipe not available. Liveness detection will be simulated.")
+    # Temporarily disable MediaPipe due to API changes
+    raise ImportError("MediaPipe API changed, using fallback")
+    # from mediapipe.tasks.python import vision
+    # from mediapipe.tasks.python.core import BaseOptions
+    # from mediapipe.tasks.python.vision import FaceLandmarker, FaceLandmarkerOptions
+    
+    # options = FaceLandmarkerOptions(
+    #     base_options=BaseOptions(model_asset_path=None),  # Will use default model
+    #     running_mode=vision.RunningMode.IMAGE,
+    #     num_faces=1,
+    #     min_face_detection_confidence=0.5,
+    #     min_face_presence_confidence=0.5,
+    #     min_tracking_confidence=0.5,
+    #     output_face_blendshapes=False,
+    #     output_facial_transformation_matrixes=False,
+    # )
+    # FACE_MESH = FaceLandmarker.create_from_options(options)
+    # LANDMARKS_AVAILABLE = True
+    # print("[INFO] MediaPipe FaceLandmarker loaded for liveness detection")
+except Exception as e:
+    print(f"[WARNING] MediaPipe not available: {e}. Liveness detection will be simulated.")
 
 
 # MediaPipe landmark indices for eyes

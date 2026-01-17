@@ -1,10 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { scheduleService } from '../services/scheduleService';
+import { ScheduleEntry } from '../types/timetable.types';
 import './SchedulePage.css';
 import './StudentSchedule.css';
 
 const SchedulePage = () => {
-    // In a real app, this would come from a context hook
-    const role = 'student'; // Currently hardcoded to student for demo
+    // Get real user role from storage
+    const role = localStorage.getItem('userRole') || 'student'; 
 
     const [file, setFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);
@@ -12,40 +14,62 @@ const SchedulePage = () => {
     const [dragActive, setDragActive] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // Mock Timetable Data for Student
+    // Dynamic schedule state
+    type ClassInfo = { subject: string; room: string; professor: string };
+    type ScheduleData = Record<string, Record<string, ClassInfo>>;
+    const [scheduleData, setScheduleData] = useState<ScheduleData>({});
+
     const timeSlots = ['9:00 - 10:00', '10:00 - 11:00', '11:00 - 11:30', '11:30 - 12:30', '12:30 - 1:30'];
     const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
-    type ClassInfo = { subject: string; room: string; professor: string };
-    type ScheduleData = Record<string, Record<string, ClassInfo>>;
-
-    const scheduleData: ScheduleData = {
-        'Monday': {
-            '9:00 - 10:00': { subject: 'Mathematics', room: '201', professor: 'Dr. Rajesh' },
-            '10:00 - 11:00': { subject: 'Physics', room: '102', professor: 'Prof. Anita' },
-            '11:30 - 12:30': { subject: 'Computer Science', room: 'Lab 1', professor: 'Dr. Amit' },
-        },
-        'Tuesday': {
-            '9:00 - 10:00': { subject: 'Chemistry', room: '305', professor: 'Dr. Suresh' },
-            '11:30 - 12:30': { subject: 'English', room: '101', professor: 'Ms. Priya' },
-            '12:30 - 1:30': { subject: 'History', room: '402', professor: 'Prof. Meena' },
-        },
-        'Wednesday': {
-            '9:00 - 10:00': { subject: 'Mathematics', room: '201', professor: 'Dr. Rajesh' },
-            '10:00 - 11:00': { subject: 'Physics', room: '102', professor: 'Prof. Anita' },
-            '12:30 - 1:30': { subject: 'Computer Science', room: 'Lab 1', professor: 'Dr. Amit' },
-        },
-        'Thursday': {
-            '9:00 - 10:00': { subject: 'Mathematics', room: '201', professor: 'Dr. Rajesh' },
-            '10:00 - 11:00': { subject: 'Physics', room: '102', professor: 'Prof. Anita' },
-            '11:30 - 12:30': { subject: 'Chemistry', room: '305', professor: 'Dr. Suresh' },
-            '12:30 - 1:30': { subject: 'English', room: '101', professor: 'Ms. Priya' },
-        },
-        'Friday': {
-            '9:00 - 10:00': { subject: 'Computer Science', room: 'Lab 1', professor: 'Dr. Amit' },
-            '10:00 - 11:00': { subject: 'History', room: '402', professor: 'Prof. Meena' },
-            '11:30 - 12:30': { subject: 'Sports', room: 'Ground', professor: 'Mr. Suresh' },
+    useEffect(() => {
+        if (role === 'student') {
+            fetchSchedule();
         }
+    }, [role]);
+
+    const fetchSchedule = async () => {
+        try {
+            // Fetch real schedule from backend
+            // In a production app, we would pass the student's class_group_id here
+            const entries = await scheduleService.getSchedule();
+            const transformed = transformSchedule(entries);
+            setScheduleData(transformed);
+        } catch (error) {
+            console.error("Failed to fetch schedule:", error);
+        }
+    };
+
+    const transformSchedule = (entries: ScheduleEntry[]) => {
+        const data: ScheduleData = {};
+        const daysMap = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        
+        // Mapping periods to slots. 
+        // Slot 0: 9:00-10:00 (Period 0)
+        // Slot 1: 10:00-11:00 (Period 1)
+        // Slot 2: 11:00-11:30 (BREAK)
+        // Slot 3: 11:30-12:30 (Period 2)
+        // Slot 4: 12:30-1:30 (Period 3)
+        
+        entries.forEach(entry => {
+            const dayName = daysMap[entry.day];
+            if (!dayName) return;
+            
+            // Adjust period index to skip the break slot (index 2)
+            let slotIndex = entry.period;
+            if (slotIndex >= 2) slotIndex++; // Shift period 2 to slot 3, period 3 to slot 4
+            
+            const timeSlot = timeSlots[slotIndex];
+            if (!timeSlot) return;
+
+            if (!data[dayName]) data[dayName] = {};
+            data[dayName][timeSlot] = {
+                subject: entry.subject_name,
+                room: entry.room_number,
+                professor: entry.teacher_name
+            };
+        });
+        return data;
     };
 
     const handleDrag = (e: React.DragEvent) => {
@@ -79,13 +103,18 @@ const SchedulePage = () => {
         setUploaded(false);
     };
 
-    const handleUpload = () => {
+    const handleUpload = async () => {
         if (!file) return;
         setUploading(true);
-        setTimeout(() => {
-            setUploading(false);
+        try {
+            await scheduleService.uploadTimetable(file);
             setUploaded(true);
-        }, 2000);
+        } catch (error) {
+            console.error("Upload failed", error);
+            // Optionally show error to user
+        } finally {
+            setUploading(false);
+        }
     };
 
     const openFileDialog = () => {
@@ -125,8 +154,6 @@ const SchedulePage = () => {
                                         const classInfo = scheduleData[day]?.[time];
 
                                         if (time === '11:00 - 11:30') {
-                                            // Break column handling is weird in standard tables without full rowspan logic
-                                            // Simplified: Just rendering a break cell for each row for now if not using fancy rowspan
                                             return <td key={time} className="break-cell">Break</td>;
                                         }
 
@@ -140,7 +167,7 @@ const SchedulePage = () => {
                                                                 <i className='bx bx-map'></i> {classInfo.room}
                                                             </span>
                                                             <span className="class-prof">
-                                                                <i className='bx bx-user'></i> {classInfo.professor.split(' ')[1]}
+                                                                <i className='bx bx-user'></i> {classInfo.professor ? classInfo.professor.split(' ')[1] : ''}
                                                             </span>
                                                         </div>
                                                     </div>
@@ -207,7 +234,7 @@ const SchedulePage = () => {
                         >
                             {uploading ? (
                                 <>
-                                    <i className='bx bx-loader-alt bx-spin'></i> Processing...
+                                    <i className='bx bx-loader-alt bx-spin'></i> Processing (AI)...
                                 </>
                             ) : uploaded ? (
                                 <>

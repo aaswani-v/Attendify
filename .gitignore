@@ -16,6 +16,7 @@ backend/models/_model_cache/
 backend/attendance.db
 *.db
 *.sqlite3
+*.jpg
 
 # Frontend
 node_modules/

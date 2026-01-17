@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { attendanceService } from '../services/attendanceService';
 import { studentService } from '../services/studentService';
+import { fingerprintScanner, fingerprintUtils } from '../services/fingerprintScanner';
 import type { Student } from '../types';
 import './MarkAttendancePage.css';
 
@@ -15,6 +16,17 @@ const MarkAttendancePage = () => {
     const [scanning, setScanning] = useState(false);
     const [detectedStudents, setDetectedStudents] = useState<string[]>([]);
     const [statusMessage, setStatusMessage] = useState<string | null>(null);
+    const [requireBiometric, setRequireBiometric] = useState(false);
+    const [fingerprintData, setFingerprintData] = useState('');
+    const [idCardData, setIdCardData] = useState('');
+    const [scannedFingerprint, setScannedFingerprint] = useState<{
+        template: string;
+        quality: number;
+        timestamp: number;
+    } | null>(null);
+    const [scannerConnected, setScannerConnected] = useState(false);
+    const [scanningFingerprint, setScanningFingerprint] = useState(false);
+    const [pendingFaceData, setPendingFaceData] = useState<{blob: Blob, latitude?: number, longitude?: number} | null>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
 
     // Students data for manual mode
@@ -60,9 +72,21 @@ const MarkAttendancePage = () => {
         return () => stopCamera();
     }, [mode]);
 
+    // Cleanup fingerprint scanner on unmount
+    useEffect(() => {
+        return () => {
+            fingerprintScanner.disconnect();
+        };
+    }, []);
+
     const handleStartScan = async () => {
         setScanning(true);
         setStatusMessage("Capturing and analyzing face...");
+        setRequireBiometric(false);
+        setPendingFaceData(null);
+        setFingerprintData('');
+        setScannedFingerprint(null);
+        setScanningFingerprint(false);
         
         try {
             // Capture image from video
@@ -95,16 +119,107 @@ const MarkAttendancePage = () => {
             if (response.success) {
                 setDetectedStudents([response.name]);
                 setStatusMessage(`✅ Attendance marked for ${response.name} (${response.confidence})`);
+                setRequireBiometric(false);
+                setPendingFaceData(null);
             } else {
-                if (response.require_biometric) {
-                    setStatusMessage(`⚠️ Low Confidence (${response.confidence}). Please use fingerprint.`);
+                if (response.status === "Biometric Required") {
+                    setRequireBiometric(true);
+                    setPendingFaceData({blob, latitude, longitude});
+                    const reason = response.notes?.[0] || "Biometric verification required";
+                    setStatusMessage(`🔐 ${reason}`);
                 } else {
-                    setStatusMessage(`❌ Error: ${response.message}`);
+                    setStatusMessage(`❌ Error: ${response.message || response.status}`);
+                    setRequireBiometric(false);
+                    setPendingFaceData(null);
                 }
                 setDetectedStudents([]);
             }
         } catch (error: any) {
             const errorMsg = error.response?.data?.message || "Face detection failed";
+            setStatusMessage("❌ Error: " + errorMsg);
+            setDetectedStudents([]);
+            setRequireBiometric(false);
+            setPendingFaceData(null);
+        } finally {
+            setScanning(false);
+        }
+    };
+
+    const connectFingerprintScanner = async () => {
+        try {
+            setStatusMessage("🔌 Connecting to fingerprint scanner...");
+            const connected = await fingerprintScanner.requestScanner();
+            if (connected) {
+                setScannerConnected(true);
+                setStatusMessage("✅ Fingerprint scanner connected successfully");
+            } else {
+                setStatusMessage("❌ Failed to connect to fingerprint scanner");
+            }
+        } catch (error: any) {
+            setStatusMessage("❌ Scanner connection failed: " + error.message);
+        }
+    };
+
+    const scanFingerprint = async () => {
+        if (!scannerConnected) {
+            setStatusMessage("❌ Please connect fingerprint scanner first");
+            return;
+        }
+
+        try {
+            setScanningFingerprint(true);
+            setStatusMessage("👆 Place finger on scanner...");
+
+            const fingerprint = await fingerprintScanner.scanFingerprint();
+            setScannedFingerprint(fingerprint);
+
+            const qualityLabel = fingerprintUtils.getQualityLabel(fingerprint.quality);
+            setStatusMessage(`✅ Fingerprint scanned successfully (${qualityLabel} quality)`);
+
+        } catch (error: any) {
+            setStatusMessage("❌ Fingerprint scan failed: " + error.message);
+            setScannedFingerprint(null);
+        } finally {
+            setScanningFingerprint(false);
+        }
+    };
+
+    const submitWithFingerprint = async () => {
+        if (!pendingFaceData || (!scannedFingerprint && !fingerprintData.trim() && !idCardData.trim())) {
+            setStatusMessage("❌ Please scan fingerprint or enter ID");
+            return;
+        }
+
+        try {
+            setScanning(true);
+            setStatusMessage("🔐 Verifying biometrics...");
+
+            // Mark attendance with both face and fingerprint/ID
+            // Use scanned fingerprint template if available, otherwise use manual data
+            const fpData = scannedFingerprint ? scannedFingerprint.template : fingerprintData;
+
+            const response = await attendanceService.markWithFaceAndFingerprint(
+                pendingFaceData.blob,
+                fpData,
+                idCardData,
+                pendingFaceData.latitude,
+                pendingFaceData.longitude
+            );
+
+            if (response.success) {
+                setDetectedStudents([response.name]);
+                setStatusMessage(`✅ Biometric verification successful for ${response.name}`);
+                setRequireBiometric(false);
+                setPendingFaceData(null);
+                setScannedFingerprint(null);
+                setFingerprintData('');
+                setIdCardData('');
+            } else {
+                setStatusMessage(`❌ Biometric verification failed: ${response.message || response.status}`);
+                setDetectedStudents([]);
+            }
+        } catch (error: any) {
+            const errorMsg = error.response?.data?.message || "Biometric verification failed";
             setStatusMessage("❌ Error: " + errorMsg);
             setDetectedStudents([]);
         } finally {
@@ -182,6 +297,24 @@ const MarkAttendancePage = () => {
                                         <><i className='bx bx-scan'></i> Start Scan</>
                                     )}
                                 </button>
+                                {/* Temporary test button */}
+                                <button
+                                    style={{ marginLeft: '10px', background: '#f59e0b' }}
+                                    onClick={() => setRequireBiometric(true)}
+                                >
+                                    Test Biometric
+                                </button>
+                                {/* Test scanner connection */}
+                                <button
+                                    style={{
+                                        marginLeft: '10px',
+                                        background: fingerprintScanner.isSupported() ? '#10b981' : '#ef4444'
+                                    }}
+                                    onClick={connectFingerprintScanner}
+                                    disabled={!fingerprintScanner.isSupported()}
+                                >
+                                    {scannerConnected ? 'Scanner Connected' : 'Test Scanner'}
+                                </button>
                             </div>
 
                             {statusMessage && (
@@ -194,6 +327,197 @@ const MarkAttendancePage = () => {
                                     textAlign: 'center'
                                 }}>
                                     {statusMessage}
+                                </div>
+                            )}
+
+                            {requireBiometric && (
+                                <div className="biometric-input-card" style={{
+                                    padding: '16px',
+                                    margin: '10px 0',
+                                    borderRadius: '8px',
+                                    background: '#3b82f622',
+                                    border: '1px solid #3b82f6'
+                                }}>
+                                    <h4 style={{ margin: '0 0 12px 0', color: '#3b82f6' }}>
+                                        <i className='bx bx-fingerprint'></i> Fingerprint Verification Required
+                                    </h4>
+
+                                    {/* Scanner Connection */}
+                                    {!fingerprintScanner.isSupported() && (
+                                        <div style={{
+                                            padding: '8px',
+                                            margin: '8px 0',
+                                            borderRadius: '4px',
+                                            background: '#ef444422',
+                                            color: '#ef4444',
+                                            fontSize: '14px'
+                                        }}>
+                                            ⚠️ Fingerprint scanning not supported in this browser. Please use Chrome or Edge.
+                                        </div>
+                                    )}
+
+                                    {!scannerConnected && fingerprintScanner.isSupported() && (
+                                        <div style={{ marginBottom: '12px' }}>
+                                            <button
+                                                onClick={connectFingerprintScanner}
+                                                style={{
+                                                    padding: '8px 16px',
+                                                    background: '#6b7280',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '4px',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                <i className='bx bx-usb'></i> Connect Scanner
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {scannerConnected && (
+                                        <div style={{ marginBottom: '12px' }}>
+                                            <div style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                marginBottom: '8px',
+                                                fontSize: '14px',
+                                                color: '#059669'
+                                            }}>
+                                                <i className='bx bx-check-circle'></i>
+                                                Scanner Connected
+                                            </div>
+
+                                            {/* Fingerprint Scan Button */}
+                                            <button
+                                                onClick={scanFingerprint}
+                                                disabled={scanningFingerprint}
+                                                style={{
+                                                    padding: '8px 16px',
+                                                    background: scanningFingerprint ? '#9ca3af' : '#3b82f6',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '4px',
+                                                    cursor: scanningFingerprint ? 'not-allowed' : 'pointer',
+                                                    marginRight: '8px'
+                                                }}
+                                            >
+                                                {scanningFingerprint ? (
+                                                    <><i className='bx bx-loader-alt bx-spin'></i> Scanning...</>
+                                                ) : (
+                                                    <><i className='bx bx-fingerprint'></i> Scan Fingerprint</>
+                                                )}
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* Scanned Fingerprint Display */}
+                                    {scannedFingerprint && (
+                                        <div style={{
+                                            padding: '8px',
+                                            margin: '8px 0',
+                                            borderRadius: '4px',
+                                            background: '#f3f4f622',
+                                            border: '1px solid #d1d5db'
+                                        }}>
+                                            <div style={{ fontSize: '14px', marginBottom: '4px' }}>
+                                                <strong>Fingerprint Captured</strong>
+                                            </div>
+                                            <div style={{
+                                                fontSize: '12px',
+                                                color: '#6b7280',
+                                                fontFamily: 'monospace'
+                                            }}>
+                                                Template: {fingerprintUtils.formatTemplate(scannedFingerprint.template)}
+                                            </div>
+                                            <div style={{
+                                                fontSize: '12px',
+                                                color: fingerprintUtils.getQualityColor(scannedFingerprint.quality),
+                                                marginTop: '4px'
+                                            }}>
+                                                Quality: {fingerprintUtils.getQualityLabel(scannedFingerprint.quality)} ({scannedFingerprint.quality}%)
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* ID Card Scanner Section */}
+                                    <div style={{ marginTop: '16px', borderTop: '1px solid #e5e7eb', paddingTop: '16px' }}>
+                                        <div style={{ fontWeight: 500, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px', color: '#374151' }}>
+                                            <i className='bx bx-barcode-reader'></i> Scan Student ID Card
+                                        </div>
+                                        <div style={{ position: 'relative' }}>
+                                            <input
+                                                type="text"
+                                                placeholder="Scan barcode or enter ID..."
+                                                value={idCardData}
+                                                autoFocus={!scannedFingerprint}
+                                                onChange={(e) => setIdCardData(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        submitWithFingerprint();
+                                                    }
+                                                }}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '10px 12px 10px 36px',
+                                                    border: '2px solid #3b82f6',
+                                                    borderRadius: '6px',
+                                                    fontSize: '16px',
+                                                    marginBottom: '4px',
+                                                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                                }}
+                                            />
+                                            <i className='bx bx-qr-scan' style={{ position: 'absolute', left: '12px', top: '13px', color: '#6b7280', fontSize: '18px' }}></i>
+                                        </div>
+                                        <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '16px', fontStyle: 'italic', paddingLeft: '4px' }}>
+                                            * Ready for handheld scanner input
+                                        </div>
+                                    </div>
+
+                                    {/* Manual Fingerprint Entry (Debug) */}
+                                    <div style={{ marginTop: '8px' }}>
+                                         <details>
+                                            <summary style={{fontSize: '11px', cursor: 'pointer', color: '#9ca3af', userSelect: 'none'}}>Advanced: Manual Fingerprint ID</summary>
+                                            <input
+                                                type="text"
+                                                placeholder="Fingerprint ID (e.g., student1_thumb)"
+                                                value={fingerprintData}
+                                                onChange={(e) => setFingerprintData(e.target.value)}
+                                                style={{
+                                                    width: '100%',
+                                                    marginTop: '4px',
+                                                    padding: '6px',
+                                                    fontSize: '12px',
+                                                    border: '1px solid #d1d5db', 
+                                                    borderRadius: '4px',
+                                                    color: '#6b7280'
+                                                }}
+                                            />
+                                         </details>
+                                    </div>
+
+                                    {/* Verify Button */}
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+                                        <button
+                                            className="btn-scan"
+                                            onClick={submitWithFingerprint}
+                                            disabled={scanning || (!scannedFingerprint && !fingerprintData.trim() && !idCardData.trim())}
+                                            style={{
+                                                padding: '8px 16px',
+                                                background: (scannedFingerprint || fingerprintData.trim() || idCardData.trim()) ? '#059669' : '#9ca3af',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '4px',
+                                                cursor: (scanning || (!scannedFingerprint && !fingerprintData.trim() && !idCardData.trim())) ? 'not-allowed' : 'pointer'
+                                            }}
+                                        >
+                                            {scanning ? (
+                                                <><i className='bx bx-loader-alt bx-spin'></i> Verifying...</>
+                                            ) : (
+                                                <><i className='bx bx-check'></i> Verify Attendance</>
+                                            )}
+                                        </button>
+                                    </div>
                                 </div>
                             )}
 

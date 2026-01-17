@@ -16,51 +16,65 @@ def init_users():
     
     db = SessionLocal()
     try:
-        # Check if users already exist
-        if db.query(User).count() > 0:
-            print("Users already exist, skipping initialization")
-            return
-        
-        # Create test users
-        test_users = [
-            User(
-                username="admin",
-                email="admin@attendify.com",
-                full_name="System Administrator",
-                hashed_password=pwd_context.hash("admin123"),
-                role=UserRole.ADMIN,
-                is_active=True
-            ),
-            User(
-                username="faculty1",
-                email="faculty1@attendify.com",
-                full_name="Dr. John Smith",
-                hashed_password=pwd_context.hash("faculty123"),
-                role=UserRole.FACULTY,
-                is_active=True
-            ),
-            User(
-                username="student1",
-                email="student1@attendify.com",
-                full_name="Alice Johnson",
-                hashed_password=pwd_context.hash("student123"),
-                role=UserRole.STUDENT,
-                is_active=True
-            ),
-            User(
-                username="student2",
-                email="student2@attendify.com",
-                full_name="Bob Williams",
-                hashed_password=pwd_context.hash("student123"),
-                role=UserRole.STUDENT,
-                is_active=True
-            ),
+        # Define test users
+        users_data = [
+            {
+                "username": "admin",
+                "email": "admin@attendify.com",
+                "full_name": "System Administrator",
+                "password": "admin123",
+                "role": UserRole.ADMIN
+            },
+            {
+                "username": "faculty1",
+                "email": "faculty1@attendify.com",
+                "full_name": "Dr. John Smith",
+                "password": "faculty123",
+                "role": UserRole.FACULTY
+            },
+            {
+                "username": "student1",
+                "email": "student1@attendify.com",
+                "full_name": "Alice Johnson",
+                "password": "student123",
+                "role": UserRole.STUDENT
+            },
+            {
+                "username": "student2",
+                "email": "student2@attendify.com",
+                "full_name": "Bob Williams",
+                "password": "student123",
+                "role": UserRole.STUDENT
+            }
         ]
-        
-        db.add_all(test_users)
+
+        print("🔄 Initializing default users...")
+
+        for data in users_data:
+            user = db.query(User).filter(User.username == data["username"]).first()
+            if user:
+                # Update existing user
+                user.hashed_password = pwd_context.hash(data["password"])
+                user.email = data["email"]
+                user.full_name = data["full_name"]
+                user.role = data["role"]
+                print(f"   Updated user: {data['username']}")
+            else:
+                # Create new user
+                new_user = User(
+                    username=data["username"],
+                    email=data["email"],
+                    full_name=data["full_name"],
+                    hashed_password=pwd_context.hash(data["password"]),
+                    role=data["role"],
+                    is_active=True
+                )
+                db.add(new_user)
+                print(f"   Created user: {data['username']}")
+
         db.commit()
         
-        print("✅ Test users created successfully:")
+        print("✅ Default users enforced successfully:")
         print("   Admin: admin / admin123")
         print("   Faculty: faculty1 / faculty123")
         print("   Student: student1 / student123")

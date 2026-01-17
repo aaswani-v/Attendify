@@ -1,17 +1,38 @@
+import React, { useState, useEffect } from 'react';
 import './StudentsPage.css';
+import { studentService } from '../services/studentService';
+import type { Student } from '../types';
 
 const StudentsPage = () => {
-    // Mock data based on image
-    const students = [
-        { id: 'STU001', name: 'Emma Johnson', class: 'Grade 10A', status: 'Present', time: '9:15 AM' },
-        { id: 'STU002', name: 'Liam Smith', class: 'Grade 10A', status: 'Present', time: '9:18 AM' },
-        { id: 'STU003', name: 'Olivia Brown', class: 'Grade 10A', status: 'Not Marked', time: '-' },
-        { id: 'STU004', name: 'Noah Davis', class: 'Grade 10A', status: 'Absent', time: 'Manual entry' },
-        { id: 'STU005', name: 'Ava Wilson', class: 'Grade 10A', status: 'Present', time: '9:22 AM' },
-        { id: 'STU006', name: 'Ethan Martinez', class: 'Grade 10A', status: 'Not Marked', time: '-' },
-        { id: 'STU007', name: 'Sophia Anderson', class: 'Grade 10A', status: 'Present', time: '9:25 AM' },
-        { id: 'STU008', name: 'Mason Thomas', class: 'Grade 10A', status: 'Not Marked', time: '-' },
-    ];
+    const [students, setStudents] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        loadStudents();
+    }, []);
+
+    const loadStudents = async () => {
+        try {
+            const data = await studentService.getAll();
+            // Transform data to match UI needs - assuming backend stats or defaults
+            // Real backend returns Student[]: { id, name, roll_number... }
+            // We need to fetch attendance status separately or join it. 
+            // For now, we'll map basic fields and default status until the join API exists.
+            const uiData = data.map(s => ({
+                id: s.roll_number,
+                name: s.name,
+                class: 'Unknown', // Backend doesn't store class yet?
+                status: 'Not Marked', // Real status requires syncing with attendance logs
+                time: '-',
+                db_id: s.id
+            }));
+            setStudents(uiData);
+        } catch (error) {
+            console.error("Failed to load students:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const getStatusClass = (status: string) => {
         switch (status) {
@@ -21,11 +42,16 @@ const StudentsPage = () => {
         }
     };
 
+    if (loading) return <div className="p-4">Loading students...</div>;
+
     return (
         <div className="students-page">
             <div className="sp-header">
                 <h2>Student List</h2>
                 <p>Manage and verify student attendance</p>
+                <button onClick={loadStudents} className="btn-scan" style={{marginLeft: 'auto', padding: '8px 16px'}}>
+                    <i className='bx bx-refresh'></i> Refresh
+                </button>
             </div>
 
             <div className="sp-table-container">

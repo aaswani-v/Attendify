@@ -32,18 +32,7 @@ import os
 from pathlib import Path
 import cv2
 import numpy as np
-
-# Add backend directory to path to import models
-BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
-if str(BACKEND_DIR) not in sys.path:
-    sys.path.append(str(BACKEND_DIR))
-
-try:
-    from models.face_model import FaceDetector
-except ImportError:
-    # Fallback if running from different context
-    sys.path.append(str(BACKEND_DIR / "models"))
-    from face_model import FaceDetector
+from app.models.face_model import FaceDetector
 
 class FaceService:
     _instance = None
@@ -61,6 +50,7 @@ class FaceService:
         Verify student from camera frame bytes.
         Returns dictionary with verification results.
         """
+        print(f"[DEBUG] FaceService.verify_student called with {len(frame_bytes)} bytes")
         try:
             # Convert bytes to numpy array
             nparr = np.frombuffer(frame_bytes, np.uint8)

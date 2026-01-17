@@ -47,6 +47,7 @@ from app.api.routes import notices, auth
 app.include_router(auth.router, prefix="/api")
 app.include_router(timetable_router)
 app.include_router(attendance_router, prefix="/api/attendance", tags=["Attendance"])
+app.include_router(sessions_router, prefix="/api/sessions", tags=["Sessions"])  # Added sessions router
 app.include_router(notices.router, prefix="/api/notices", tags=["Notices"])
 app.include_router(sessions_router, prefix="/api/sessions", tags=["Sessions"])
 

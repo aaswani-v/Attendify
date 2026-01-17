@@ -12,16 +12,30 @@ class Base(DeclarativeBase):
     pass
 
 # Database URL
-DATABASE_URL = config.DATABASE_URL
+primary_url = config.DATABASE_URL
+fallback_url = "sqlite:///attendance.db"
 
-# Engine configuration
-engine = create_engine(
-    DATABASE_URL,
-    poolclass=StaticPool,
-    pool_pre_ping=True,
-    echo=config.DEBUG_MODE,
-    connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
-)
+def create_db_engine(url):
+    return create_engine(
+        url,
+        poolclass=StaticPool if "sqlite" in url else None,
+        pool_pre_ping=True,
+        echo=config.DEBUG_MODE,
+        connect_args={"check_same_thread": False} if "sqlite" in url else {}
+    )
+
+try:
+    print(f"[INFO] Attempting to connect to database...")
+    engine = create_db_engine(primary_url)
+    
+    # Test connection
+    with engine.connect() as connection:
+        print(f"[INFO] Successfully connected to primary database")
+        
+except Exception as e:
+    print(f"[WARNING] Failed to connect to primary database: {e}")
+    print(f"[INFO] Falling back to SQLite: {fallback_url}")
+    engine = create_db_engine(fallback_url)
 
 # Session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

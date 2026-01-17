@@ -1,18 +1,31 @@
+import { useEffect, useState } from 'react';
+import { attendanceStatsService } from '../../services/attendanceStatsService';
 import './TeacherDashboard.css';
 
 const TeacherDashboard = () => {
-    // Mock data for the chart
-    const weeklyData = [
-        { day: 'Mon', present: 42, absent: 6 },
-        { day: 'Tue', present: 45, absent: 3 },
-        { day: 'Wed', present: 43, absent: 5 },
-        { day: 'Thu', present: 46, absent: 4 }, // Highlighted in design
-        { day: 'Fri', present: 38, absent: 10 },
-        { day: 'Sat', present: 0, absent: 0 },
-        { day: 'Sun', present: 0, absent: 0 },
-    ];
+    const [stats, setStats] = useState({
+        total_students: 0,
+        present_today: 0,
+        absent_today: 0,
+        attendance_rate: 0,
+        weekly_data: []
+    });
+
+    useEffect(() => {
+        fetchStats();
+    }, []);
+
+    const fetchStats = async () => {
+        try {
+            const data = await attendanceStatsService.getStats();
+            setStats(data);
+        } catch (error) {
+            console.error("Failed to fetch attendance stats:", error);
+        }
+    };
 
     const maxVal = 60; // Max value for chart scale
+    const userName = localStorage.getItem('userName') || 'Faculty';
 
     return (
         <div className="teacher-dashboard">
@@ -27,11 +40,11 @@ const TeacherDashboard = () => {
                     {/* Right side - User Info */}
                     <div className="td-user-section">
                         <div className="td-user-info">
-                            <span className="user-name">Shaheen Ahmad</span>
+                            <span className="user-name">{userName}</span>
                             <span className="user-role">Faculty</span>
                         </div>
                         <img
-                            src="https://ui-avatars.com/api/?name=Shaheen+Ahmad&background=fff&color=3B753D&size=40"
+                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=fff&color=3B753D&size=40`}
                             alt="Profile"
                             className="user-avatar"
                         />
@@ -47,7 +60,7 @@ const TeacherDashboard = () => {
                             <span>Total Students</span>
                             <i className='bx bx-group'></i>
                         </div>
-                        <div className="stat-value">8</div>
+                        <div className="stat-value">{stats.total_students}</div>
                         <div className="stat-sub">Registered in system</div>
                     </div>
                     <div className="stat-card">
@@ -55,7 +68,7 @@ const TeacherDashboard = () => {
                             <span>Present Today</span>
                             <i className='bx bx-check-circle success'></i>
                         </div>
-                        <div className="stat-value">4</div>
+                        <div className="stat-value">{stats.present_today}</div>
                         <div className="stat-sub">Verified attendance</div>
                     </div>
                     <div className="stat-card">
@@ -63,7 +76,7 @@ const TeacherDashboard = () => {
                             <span>Absent Today</span>
                             <i className='bx bx-x-circle error'></i>
                         </div>
-                        <div className="stat-value">1</div>
+                        <div className="stat-value">{stats.absent_today}</div>
                         <div className="stat-sub">Not marked present</div>
                     </div>
                     <div className="stat-card">
@@ -71,7 +84,7 @@ const TeacherDashboard = () => {
                             <span>Attendance Rate</span>
                             <i className='bx bx-calendar'></i>
                         </div>
-                        <div className="stat-value">50%</div>
+                        <div className="stat-value">{stats.attendance_rate}%</div>
                         <div className="stat-sub">Today's overall rate</div>
                     </div>
                 </div>
@@ -101,7 +114,7 @@ const TeacherDashboard = () => {
                                 <div className="line"></div>
                             </div>
 
-                            {weeklyData.map((d, i) => (
+                            {stats.weekly_data.map((d, i) => (
                                 <div className="bar-group" key={i}>
                                     <div className="bars-wrapper">
                                         <div

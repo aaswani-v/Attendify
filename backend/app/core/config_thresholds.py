@@ -31,6 +31,7 @@ class VerificationThresholds:
     FACE_CONFIDENCE_MEDIUM: float = 65.0    # % - Acceptable match
     FACE_CONFIDENCE_LOW: float = 50.0       # % - Warn but allow
     FACE_CONFIDENCE_REJECT: float = 40.0    # % - Below this = reject
+    FACE_CONFIDENCE_BIOMETRIC_REQUIRED: float = 60.0  # % - Below this = require fingerprint
     
     # LBPH distance thresholds (raw values)
     MAX_LBPH_DISTANCE: float = 80.0         # Above = Unknown (no match)
