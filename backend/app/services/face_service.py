@@ -42,7 +42,7 @@ class FaceService:
         if cls._instance is None:
             cls._instance = super(FaceService, cls).__new__(cls)
             print("[INFO] Initializing FaceService Singleton...")
-            cls._detector = FaceDetector(max_distance=80.0)
+            cls._detector = FaceDetector(max_distance=70.0, detection_scale=0.6, skip_frames=1, min_confidence=60.0)
         return cls._instance
 
     def verify_student(self, frame_bytes: bytes) -> dict:

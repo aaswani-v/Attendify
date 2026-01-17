@@ -18,6 +18,9 @@ geopy
 ortools
 pillow
 
+# Liveness Detection
+mediapipe==0.10.14
+
 # Timetable Parsing (OCR + Groq)
 pytesseract
 groq

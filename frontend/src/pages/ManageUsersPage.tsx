@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { userService, type UserRecord } from '../services/userService';
-import type { UserRole } from '../types/auth.types';
+import type { UserRole, User } from '../types/auth.types';
+import * as authService from '../services/authService';
 import { TOKEN_KEY } from '../utils/constants';
 import './ManageUsersPage.css';
 
@@ -13,7 +14,8 @@ const ManageUsersPage = () => {
     const [creating, setCreating] = useState(false);
     const [newUser, setNewUser] = useState({ ...defaultNewUser });
 
-    const storedRole = (localStorage.getItem('userRole') || '').toUpperCase();
+    const [currentUser, setCurrentUser] = useState<User | null>(authService.getStoredUser());
+    const storedRole = (currentUser?.role || localStorage.getItem('userRole') || '').toUpperCase();
     const isAdmin = storedRole === 'ADMIN';
     const hasToken = !!localStorage.getItem(TOKEN_KEY);
 
@@ -32,20 +34,33 @@ const ManageUsersPage = () => {
     };
 
     useEffect(() => {
-        if (!isAdmin) {
-            setLoading(false);
-            setError('Admin access required to view and manage users.');
-            return;
-        }
+        const validateAndLoad = async () => {
+            if (!hasToken) {
+                setLoading(false);
+                setError('You are not authenticated. Please log in again.');
+                return;
+            }
 
-        if (!hasToken) {
-            setLoading(false);
-            setError('You are not authenticated. Please log in again.');
-            return;
-        }
+            try {
+                const me = await authService.getCurrentUser();
+                setCurrentUser(me);
 
-        loadUsers();
-    }, [isAdmin, hasToken]);
+                if (me.role !== 'ADMIN') {
+                    setLoading(false);
+                    setError('Admin access required to view and manage users.');
+                    return;
+                }
+
+                await loadUsers();
+            } catch (err) {
+                const message = err instanceof Error ? err.message : 'Could not validate credentials.';
+                setError(message);
+                setLoading(false);
+            }
+        };
+
+        validateAndLoad();
+    }, [hasToken]);
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -83,7 +98,7 @@ const ManageUsersPage = () => {
         }
     };
 
-    if (!isAdmin) {
+    if (!isAdmin && !loading) {
         return (
             <div className="manage-users-page">
                 <div className="mup-header">
@@ -136,7 +151,7 @@ const ManageUsersPage = () => {
                                             <td><span className="role-pill">{user.role}</span></td>
                                             <td>{user.email || '-'}</td>
                                             <td>{user.is_active ? 'Yes' : 'No'}</td>
-                                            <td>{new Date(user.created_at).toLocaleString()}</td>
+                                            <td>{user.created_at ? new Date(user.created_at).toLocaleString() : '-'}</td>
                                             <td>
                                                 <button className="btn-danger" onClick={() => handleDelete(user.id)}>
                                                     Delete

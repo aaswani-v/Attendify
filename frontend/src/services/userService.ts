@@ -9,7 +9,7 @@ export interface UserRecord {
   full_name?: string;
   role: UserRole;
   is_active: boolean;
-  created_at: string;
+  created_at?: string | null;
 }
 
 export interface CreateUserPayload {

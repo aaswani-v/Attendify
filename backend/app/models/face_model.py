@@ -38,6 +38,7 @@ except ImportError:
 DATA_FACE_DIR = Path(__file__).parent / "_data-face"
 MODEL_CACHE_DIR = Path(__file__).parent / "_model_cache"
 VIDEO_DIR = Path(__file__).parent / "_videos"
+MODEL_VERSION = 2
 
 
 def get_folder_hash(folder: Path) -> str:
@@ -50,11 +51,12 @@ def get_folder_hash(folder: Path) -> str:
 class FaceDetector:
     """Face detection and recognition with video recording support."""
     
-    def __init__(self, max_distance: float = 80.0, detection_scale: float = 0.5,
-                 skip_frames: int = 2):
+    def __init__(self, max_distance: float = 70.0, detection_scale: float = 0.6,
+                 skip_frames: int = 2, min_confidence: float = 60.0):
         self.max_distance = max_distance
         self.detection_scale = detection_scale
         self.skip_frames = skip_frames
+        self.min_confidence = min_confidence
         self.known_face_labels: Dict[int, str] = {}
         self.label_counter = 0
         
@@ -92,8 +94,10 @@ class FaceDetector:
         self.load_model()
     
     def preprocess_face(self, face_roi: np.ndarray) -> np.ndarray:
-        face = cv2.resize(face_roi, (100, 100))
+        face = cv2.resize(face_roi, (120, 120))
         face = cv2.equalizeHist(face)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        face = clahe.apply(face)
         return face
     
     def load_model(self) -> bool:
@@ -103,7 +107,14 @@ class FaceDetector:
         
         if hashes_path.exists():
             with open(hashes_path, 'rb') as f:
-                self.folder_hashes = pickle.load(f)
+                cached = pickle.load(f)
+                if isinstance(cached, dict) and "hashes" in cached:
+                    if cached.get("version") == MODEL_VERSION:
+                        self.folder_hashes = cached.get("hashes", {})
+                    else:
+                        self.folder_hashes = {}
+                elif isinstance(cached, dict):
+                    self.folder_hashes = cached
         
         current_folders = {}
         changed = []
@@ -131,7 +142,7 @@ class FaceDetector:
                 self.is_trained = True
                 print(f"[INFO] Loaded {len(self.known_face_labels)} persons")
                 return True
-            except:
+            except Exception:
                 pass
         
         if changed:
@@ -174,7 +185,7 @@ class FaceDetector:
                     faces.append(self.preprocess_face(roi))
                     labels.append(label)
                     count += 1
-                except:
+                except Exception:
                     pass
             
             if count > 0:
@@ -194,9 +205,9 @@ class FaceDetector:
             with open(MODEL_CACHE_DIR / "labels.pkl", 'wb') as f:
                 pickle.dump({'labels': self.known_face_labels, 'counter': self.label_counter}, f)
             with open(MODEL_CACHE_DIR / "folder_hashes.pkl", 'wb') as f:
-                pickle.dump(hashes, f)
+                pickle.dump({"version": MODEL_VERSION, "hashes": hashes}, f)
             self.folder_hashes = hashes
-        except:
+        except Exception:
             pass
     
     def force_retrain(self):
@@ -210,6 +221,7 @@ class FaceDetector:
         scale = self.detection_scale
         small = cv2.resize(frame, None, fx=scale, fy=scale)
         gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
+        gray = cv2.equalizeHist(gray)
         all_faces = []
         
         if self.yolo_model:
@@ -230,7 +242,8 @@ class FaceDetector:
         
         if not all_faces:
             faces = self.face_cascade.detectMultiScale(gray, 1.1, 5, minSize=(30, 30))
-            for (x, y, w, h) in faces:
+            alt_faces = self.alt_cascade.detectMultiScale(gray, 1.1, 5, minSize=(30, 30))
+            for (x, y, w, h) in list(faces) + list(alt_faces):
                 all_faces.append((int(x/scale), int(y/scale), int(w/scale), int(h/scale)))
         
         return all_faces
@@ -247,10 +260,10 @@ class FaceDetector:
         roi = self.preprocess_face(gray[y:y2, x:x2])
         try:
             label, dist = self.recognizer.predict(roi)
-            conf = max(0, min(100, 100 - dist * 0.7))
-            if dist <= self.max_distance:
+            conf = max(0, min(100, 100 - dist * 0.75))
+            if dist <= self.max_distance and conf >= self.min_confidence:
                 return self.known_face_labels.get(label, "Unknown"), conf, dist
-        except:
+        except Exception:
             pass
         return "Unknown", 0.0, 999.0
     
@@ -266,7 +279,7 @@ class FaceDetector:
         for f in folder.glob("*.jpg"):
             try:
                 nums.append(int(f.stem))
-            except:
+            except Exception:
                 pass
         return max(nums, default=0) + 1
     
@@ -609,14 +622,14 @@ class FaceDetector:
                             try:
                                 dur_input = input().strip()
                                 duration = int(dur_input) if dur_input else 10
-                            except:
+                            except Exception:
                                 duration = 10
                             
                             count = self.record_and_extract(name, duration, camera_index)
                         elif input_action == "capture":
                             count = self.capture_photos(name, camera_index)
                         elif input_action == "video":
-                            print(f"\nEnter full path to video file: ", end="")
+                            print("\nEnter full path to video file: ", end="")
                             video_path = input().strip()
                             if video_path and os.path.exists(video_path):
                                 count = self.extract_from_video(video_path, name)

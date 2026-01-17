@@ -26,7 +26,7 @@ class UserRead(BaseModel):
     full_name: Optional[str]
     role: UserRole
     is_active: bool
-    created_at: datetime
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

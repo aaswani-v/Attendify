@@ -21,34 +21,26 @@ from dataclasses import dataclass
 import time
 
 from app.core.config_thresholds import thresholds
+from app.core.logging import logger
 
-# Try to import dlib or mediapipe for landmarks
-# Fallback to OpenCV only if not available
+# Try to import mediapipe for landmarks (fallback to simulation if unavailable)
 LANDMARKS_AVAILABLE = False
 FACE_MESH = None
 
 try:
-    # Temporarily disable MediaPipe due to API changes
-    raise ImportError("MediaPipe API changed, using fallback")
-    # from mediapipe.tasks.python import vision
-    # from mediapipe.tasks.python.core import BaseOptions
-    # from mediapipe.tasks.python.vision import FaceLandmarker, FaceLandmarkerOptions
-    
-    # options = FaceLandmarkerOptions(
-    #     base_options=BaseOptions(model_asset_path=None),  # Will use default model
-    #     running_mode=vision.RunningMode.IMAGE,
-    #     num_faces=1,
-    #     min_face_detection_confidence=0.5,
-    #     min_face_presence_confidence=0.5,
-    #     min_tracking_confidence=0.5,
-    #     output_face_blendshapes=False,
-    #     output_facial_transformation_matrixes=False,
-    # )
-    # FACE_MESH = FaceLandmarker.create_from_options(options)
-    # LANDMARKS_AVAILABLE = True
-    # print("[INFO] MediaPipe FaceLandmarker loaded for liveness detection")
+    import mediapipe as mp
+
+    FACE_MESH = mp.solutions.face_mesh.FaceMesh(
+        static_image_mode=True,
+        max_num_faces=1,
+        refine_landmarks=True,
+        min_detection_confidence=0.5,
+        min_tracking_confidence=0.5,
+    )
+    LANDMARKS_AVAILABLE = True
+    logger.info("MediaPipe FaceMesh loaded for liveness detection")
 except Exception as e:
-    print(f"[WARNING] MediaPipe not available: {e}. Liveness detection will be simulated.")
+    logger.info(f"MediaPipe not available: {e}. Liveness detection will be simulated.")
 
 
 # MediaPipe landmark indices for eyes
@@ -163,6 +155,38 @@ class LivenessService:
         self.ear_threshold = thresholds.EAR_BLINK_THRESHOLD
         self.min_blink_frames = thresholds.MIN_BLINK_FRAMES
     
+    def _analyze_frame(self, frame_bytes: bytes) -> Optional[float]:
+        """Return average EAR for a frame or None if unavailable."""
+        nparr = np.frombuffer(frame_bytes, np.uint8)
+        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+        if frame is None:
+            return None
+
+        left_eye, right_eye = get_eye_landmarks(frame)
+
+        if left_eye is None or right_eye is None:
+            return None
+
+        left_ear = calculate_ear(left_eye)
+        right_ear = calculate_ear(right_eye)
+        return (left_ear + right_ear) / 2.0
+
+    def _update_blink_state(self, avg_ear: float, in_blink: bool, consecutive_closed: int) -> tuple[bool, int, int]:
+        """Update blink state based on EAR value."""
+        blink_count = 0
+        if avg_ear < self.ear_threshold:
+            consecutive_closed += 1
+            if consecutive_closed >= self.min_blink_frames and not in_blink:
+                in_blink = True
+        else:
+            if in_blink:
+                blink_count = 1
+                in_blink = False
+            consecutive_closed = 0
+
+        return in_blink, consecutive_closed, blink_count
+
     def check_liveness(self, frames: List[bytes]) -> LivenessResult:
         """
         Analyze multiple frames for blink detection.
@@ -194,43 +218,25 @@ class LivenessService:
                 message="Insufficient frames for liveness check (need 3+)"
             )
         
-        ear_values = []
+        ear_values: List[float] = []
         blink_count = 0
         in_blink = False
         consecutive_closed = 0
-        
+
         for frame_bytes in frames:
-            # Decode frame
-            nparr = np.frombuffer(frame_bytes, np.uint8)
-            frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-            
-            if frame is None:
+            avg_ear = self._analyze_frame(frame_bytes)
+
+            if avg_ear is None:
+                ear_values.append(-1)
                 continue
-            
-            # Get eye landmarks
-            left_eye, right_eye = get_eye_landmarks(frame)
-            
-            if left_eye is None or right_eye is None:
-                ear_values.append(-1)  # No face detected
-                continue
-            
-            # Calculate EAR for both eyes
-            left_ear = calculate_ear(left_eye)
-            right_ear = calculate_ear(right_eye)
-            avg_ear = (left_ear + right_ear) / 2.0
+
             ear_values.append(avg_ear)
-            
-            # Blink detection state machine
-            if avg_ear < self.ear_threshold:
-                consecutive_closed += 1
-                if consecutive_closed >= self.min_blink_frames and not in_blink:
-                    in_blink = True
-            else:
-                if in_blink:
-                    # Blink completed (eyes were closed, now open)
-                    blink_count += 1
-                    in_blink = False
-                consecutive_closed = 0
+            in_blink, consecutive_closed, just_blinked = self._update_blink_state(
+                avg_ear,
+                in_blink,
+                consecutive_closed,
+            )
+            blink_count += just_blinked
         
         # Determine result
         passed = blink_count >= 1

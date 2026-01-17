@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.models.attendance import Student, AttendanceLog, Base
 from app.models.session import AttendanceSession  # NEW: Session model
 from app.models.timetable import Teacher, Room, Subject, ClassGroup, TimetableEntry, teacher_subject
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.api.routes.timetable import router as timetable_router
 from app.api.routes.attendance import router as attendance_router
 from app.api.routes.sessions import router as sessions_router  # NEW: Sessions API
@@ -17,7 +17,12 @@ from app.core.config import config
 from app.core.config_thresholds import thresholds  # NEW: Thresholds config
 from app.core.database import create_tables, engine, SessionLocal
 from app.core.logging import logger
+from app.api.routes.auth import get_password_hash
+from datetime import datetime, timezone
+from sqlalchemy import text
 import uvicorn
+
+DEFAULT_FACULTY_NAME = "Dr. John Smith"
 
 # Initialize database
 logger.info("Initializing database...")
@@ -25,6 +30,95 @@ from app.models.user import Base as UserBase
 UserBase.metadata.create_all(bind=engine)
 create_tables()
 logger.info("Database initialized successfully")
+
+# Ensure users table has required columns (handles older SQLite schemas)
+def ensure_user_schema() -> None:
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text("PRAGMA table_info(users)"))
+            existing_columns = {row[1] for row in result.fetchall()}
+
+            if "password_hash" not in existing_columns:
+                conn.execute(text("ALTER TABLE users ADD COLUMN password_hash VARCHAR(255)"))
+            if "role" not in existing_columns:
+                conn.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR(20)"))
+            if "is_active" not in existing_columns:
+                conn.execute(text("ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT 1"))
+            if "created_at" not in existing_columns:
+                conn.execute(text("ALTER TABLE users ADD COLUMN created_at DATETIME"))
+            if "full_name" not in existing_columns:
+                conn.execute(text("ALTER TABLE users ADD COLUMN full_name VARCHAR(100)"))
+            if "email" not in existing_columns:
+                conn.execute(text("ALTER TABLE users ADD COLUMN email VARCHAR(100)"))
+
+            # Backfill defaults for nullable legacy rows
+            conn.execute(text("UPDATE users SET is_active = 1 WHERE is_active IS NULL"))
+            conn.execute(text("UPDATE users SET role = 'STUDENT' WHERE role IS NULL"))
+            conn.execute(text("UPDATE users SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL"))
+
+            conn.commit()
+    except Exception as exc:
+        logger.error(f"Failed to ensure user schema: {exc}")
+
+ensure_user_schema()
+
+# Ensure default users exist (dev convenience)
+def ensure_default_users():
+    db = SessionLocal()
+    try:
+        defaults = [
+            {
+                "username": "admin",
+                "email": "admin@attendify.com",
+                "full_name": "System Administrator",
+                "password": "admin123",
+                "role": UserRole.ADMIN,
+            },
+            {
+                "username": "faculty1",
+                "email": "faculty1@attendify.com",
+                "full_name": DEFAULT_FACULTY_NAME,
+                "password": "faculty123",
+                "role": UserRole.FACULTY,
+            },
+            {
+                "username": "student1",
+                "email": "student1@attendify.com",
+                "full_name": "Alice Johnson",
+                "password": "student123",
+                "role": UserRole.STUDENT,
+            },
+        ]
+
+        for data in defaults:
+            existing = db.query(User).filter(User.username == data["username"]).first()
+            if existing:
+                existing.email = data["email"]
+                existing.full_name = data["full_name"]
+                existing.password_hash = get_password_hash(data["password"])
+                existing.role = data["role"]
+                existing.is_active = True
+                if not existing.created_at:
+                    existing.created_at = datetime.now(timezone.utc)
+                continue
+            user = User(
+                username=data["username"],
+                email=data["email"],
+                full_name=data["full_name"],
+                password_hash=get_password_hash(data["password"]),
+                role=data["role"],
+                is_active=True,
+                created_at=datetime.now(timezone.utc),
+            )
+            db.add(user)
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        logger.error(f"Failed to ensure default users: {exc}")
+    finally:
+        db.close()
+
+ensure_default_users()
 
 # Create FastAPI app
 app = FastAPI(
@@ -50,7 +144,6 @@ app.include_router(timetable_router)
 app.include_router(attendance_router, prefix="/api/attendance", tags=["Attendance"])
 app.include_router(sessions_router, prefix="/api/sessions", tags=["Sessions"])  # Added sessions router
 app.include_router(notices.router, prefix="/api/notices", tags=["Notices"])
-app.include_router(sessions_router, prefix="/api/sessions", tags=["Sessions"])
 app.include_router(users_router.router, prefix="/api", tags=["Users"])
 
 # ==================== SEEDING & UTILITIES ====================
@@ -66,7 +159,7 @@ def seed_database():
         
         # Create Teachers
         teachers = [
-            Teacher(name="Dr. John Smith", email="john@university.edu", max_hours_per_day=6),
+            Teacher(name=DEFAULT_FACULTY_NAME, email="john@university.edu", max_hours_per_day=6),
             Teacher(name="Prof. Emily Davis", email="emily@university.edu", max_hours_per_day=5),
             Teacher(name="Dr. Michael Brown", email="michael@university.edu", max_hours_per_day=6),
             Teacher(name="Prof. Sarah Wilson", email="sarah@university.edu", max_hours_per_day=6),
