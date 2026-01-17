@@ -140,8 +140,12 @@ export const useAuth = (): UseAuthReturn => {
     error,
     isAuthenticated: authService.isAuthenticated(),
     login,
+    loginWithGoogle,
     register,
     logout,
     refreshUser,
   };
 };
+  
+  
+  

@@ -19,7 +19,7 @@ import FaceRecognitionDemo from './pages/FaceRecognitionDemo';
 import './App.css';
 
 function App() {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Disabled splash screen
 
   return (
     <>

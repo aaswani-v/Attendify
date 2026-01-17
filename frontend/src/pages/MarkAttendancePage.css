@@ -162,10 +162,13 @@
 .camera-controls {
     padding: 20px;
     text-align: center;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
-.btn-scan {
-    background: #22c55e;
+.btn-control {
     color: #fff;
     border: none;
     padding: 14px 32px;
@@ -176,16 +179,37 @@
     align-items: center;
     gap: 10px;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background 0.2s, opacity 0.2s;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+.btn-control:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.btn-scan {
+    background: #22c55e;
 }
 
 .btn-scan:hover:not(:disabled) {
     background: #16a34a;
 }
 
-.btn-scan:disabled {
-    background: #94a3b8;
-    cursor: not-allowed;
+.btn-biometric {
+    background: #f59e0b;
+}
+
+.btn-biometric:hover:not(:disabled) {
+    background: #d97706;
+}
+
+.btn-scanner {
+    background: #0ea5e9;
+}
+
+.btn-scanner:hover:not(:disabled) {
+    background: #0284c7;
 }
 
 /* Detected List */

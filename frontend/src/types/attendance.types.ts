@@ -2,7 +2,7 @@
  * Attendance Types
  */
 
-export type AttendanceStatus = 'Present' | 'Absent' | 'Unknown' | 'Verify' | 'Rejected' | string;
+export type AttendanceStatus = 'Present' | 'Absent' | 'Unknown' | 'Verify' | 'Rejected' | 'Biometric Required';
 
 export interface Student {
   id: number;
@@ -25,4 +25,5 @@ export interface FaceAttendanceResponse {
   confidence?: string;
   message: string;
   require_biometric?: boolean;
+  notes?: string[];
 }

@@ -35,7 +35,7 @@ const AuthPage = () => {
 
     // Effect to apply theme to body/root
     useEffect(() => {
-        document.body.setAttribute('data-theme', theme);
+        document.body.dataset.theme = theme;
     }, [theme]);
 
     const toggleTheme = () => {
@@ -128,7 +128,7 @@ const AuthPage = () => {
                             onClick={async () => {
                                 try {
                                     setLoading(true);
-                                    await useAuth().loginWithGoogle();
+                                    await loginWithGoogle();
                                 } catch (err) {
                                     setError(err instanceof Error ? err.message : 'Google login failed');
                                 } finally {
@@ -192,8 +192,12 @@ const AuthPage = () => {
                 <form onSubmit={handleFacultyLogin}>
                     <h1>Faculty Login</h1>
                     <div className="social-container">
-                        <a href="#" className="social"><i className='bx bxl-google'></i></a>
-                        <a href="#" className="social"><i className='bx bxl-linkedin'></i></a>
+                        <button type="button" className="social" onClick={loginWithGoogle}>
+                            <i className='bx bxl-google'></i>
+                        </button>
+                        <button type="button" className="social">
+                            <i className='bx bxl-linkedin'></i>
+                        </button>
                     </div>
                     <span>or use your email for registration</span>
                     {error && (
@@ -224,7 +228,7 @@ const AuthPage = () => {
                         disabled={loading}
                         required
                     />
-                    <a href="#">Forgot your password?</a>
+                    <a href="/reset-password">Forgot your password?</a>
                     <button disabled={loading}>
                         {loading ? 'Logging in...' : 'Sign In'}
                     </button>
@@ -236,8 +240,12 @@ const AuthPage = () => {
                 <form onSubmit={handleStudentLogin}>
                     <h1>Student Login</h1>
                     <div className="social-container">
-                        <a href="#" className="social"><i className='bx bxl-google'></i></a>
-                        <a href="#" className="social"><i className='bx bxl-linkedin'></i></a>
+                        <button type="button" className="social" onClick={loginWithGoogle}>
+                            <i className='bx bxl-google'></i>
+                        </button>
+                        <button type="button" className="social">
+                            <i className='bx bxl-linkedin'></i>
+                        </button>
                     </div>
                     <span>or use your account</span>
                     {error && (
@@ -268,7 +276,7 @@ const AuthPage = () => {
                         disabled={loading}
                         required
                     />
-                    <a href="#">Forgot your password?</a>
+                    <a href="/reset-password">Forgot your password?</a>
                     <button disabled={loading}>
                         {loading ? 'Logging in...' : 'Sign In'}
                     </button>

@@ -1,5 +1,5 @@
 import { apiClient } from '../utils/api';
-import { ScheduleEntry } from '../types/timetable.types';
+import type { ScheduleEntry } from '../types/timetable.types';
 
 export const scheduleService = {
     /**

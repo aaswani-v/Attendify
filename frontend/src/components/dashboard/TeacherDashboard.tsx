@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
 import { attendanceStatsService } from '../../services/attendanceStatsService';
+import type { AttendanceStats } from '../../services/attendanceStatsService';
 import './TeacherDashboard.css';
 
 const TeacherDashboard = () => {
-    const [stats, setStats] = useState({
+    const [stats, setStats] = useState<AttendanceStats>({
         total_students: 0,
         present_today: 0,
         absent_today: 0,
         attendance_rate: 0,
-        weekly_data: []
+        weekly_data: [],
     });
 
     useEffect(() => {

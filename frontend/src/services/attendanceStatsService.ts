@@ -1,6 +1,6 @@
 import { apiClient } from '../utils/api';
 
-interface AttendanceStats {
+export interface AttendanceStats {
     total_students: number;
     present_today: number;
     absent_today: number;

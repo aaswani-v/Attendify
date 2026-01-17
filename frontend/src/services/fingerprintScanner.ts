@@ -24,7 +24,8 @@ const SUPPORTED_SCANNERS: FingerprintScanner[] = [
 ];
 
 class FingerprintScannerService {
-    private device: USBDevice | null = null;
+    // Generic device reference without DOM typings
+    private device: unknown | null = null;
     private isConnected = false;
 
     /**
@@ -44,7 +45,8 @@ class FingerprintScannerService {
 
         try {
             // Request a device
-            this.device = await navigator.usb.requestDevice({
+            const nav: any = navigator as any;
+            this.device = await nav.usb.requestDevice({
                 filters: SUPPORTED_SCANNERS.map(scanner => ({
                     vendorId: scanner.vendorId,
                     productId: scanner.productId
@@ -52,12 +54,13 @@ class FingerprintScannerService {
             });
 
             // Open the device
-            await this.device.open();
-            await this.device.selectConfiguration(1);
-            await this.device.claimInterface(0);
+            const dev: any = this.device;
+            await dev.open();
+            await dev.selectConfiguration(1);
+            await dev.claimInterface(0);
 
             this.isConnected = true;
-            console.log(`Connected to: ${this.device.productName} (${this.device.vendorId}:${this.device.productId})`);
+            console.log(`Connected to: ${dev.productName} (${dev.vendorId}:${dev.productId})`);
             return true;
         } catch (error) {
             console.error('Failed to connect to fingerprint scanner:', error);
@@ -75,6 +78,7 @@ class FingerprintScannerService {
         }
 
         try {
+            const dev: any = this.device;
             // Send scan command (this is device-specific)
             // Note: Actual commands depend on the scanner model
             const scanCommand = new Uint8Array([
@@ -83,13 +87,13 @@ class FingerprintScannerService {
                 0x00, 0x00 // Parameters
             ]);
 
-            await this.device.transferOut(1, scanCommand);
+            await dev.transferOut(1, scanCommand);
 
             // Wait for response (device-specific timing)
             await new Promise(resolve => setTimeout(resolve, 1000));
 
             // Read fingerprint data
-            const result = await this.device.transferIn(1, 64);
+            const result = await dev.transferIn(1, 64);
             const data = new Uint8Array(result.data!.buffer);
 
             // Process the raw fingerprint data
@@ -97,7 +101,7 @@ class FingerprintScannerService {
             const quality = this.calculateQualityScore(data);
 
             return {
-                template: btoa(String.fromCharCode(...template)),
+                template: btoa(String.fromCodePoint(...template)),
                 quality,
                 timestamp: Date.now()
             };
@@ -154,7 +158,8 @@ class FingerprintScannerService {
     async disconnect(): Promise<void> {
         if (this.device && this.isConnected) {
             try {
-                await this.device.close();
+                const dev: any = this.device;
+                await dev.close();
             } catch (error) {
                 console.error('Error disconnecting scanner:', error);
             }

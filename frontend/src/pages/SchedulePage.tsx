@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { scheduleService } from '../services/scheduleService';
-import { ScheduleEntry } from '../types/timetable.types';
+import type { ScheduleEntry } from '../types/timetable.types';
 import './SchedulePage.css';
 import './StudentSchedule.css';
 

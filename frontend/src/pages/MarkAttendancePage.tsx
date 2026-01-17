@@ -287,7 +287,7 @@ const MarkAttendancePage = () => {
                             </div>
                             <div className="camera-controls">
                                 <button
-                                    className="btn-scan"
+                                    className="btn-control btn-scan"
                                     onClick={handleStartScan}
                                     disabled={scanning}
                                 >
@@ -299,16 +299,20 @@ const MarkAttendancePage = () => {
                                 </button>
                                 {/* Temporary test button */}
                                 <button
-                                    style={{ marginLeft: '10px', background: '#f59e0b' }}
+                                    className="btn-control btn-biometric"
                                     onClick={() => setRequireBiometric(true)}
                                 >
                                     Test Biometric
                                 </button>
                                 {/* Test scanner connection */}
                                 <button
+                                    className="btn-control btn-scanner"
                                     style={{
-                                        marginLeft: '10px',
-                                        background: fingerprintScanner.isSupported() ? '#10b981' : '#ef4444'
+                                        background: scannerConnected
+                                            ? '#10b981'
+                                            : fingerprintScanner.isSupported()
+                                                ? '#0ea5e9'
+                                                : '#ef4444'
                                     }}
                                     onClick={connectFingerprintScanner}
                                     disabled={!fingerprintScanner.isSupported()}

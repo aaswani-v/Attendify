@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import './StudentsPage.css';
 import { studentService } from '../services/studentService';
-import type { Student } from '../types';
 
 const StudentsPage = () => {
     const [students, setStudents] = useState<any[]>([]);
@@ -67,8 +66,8 @@ const StudentsPage = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {students.map((student, index) => (
-                            <tr key={index}>
+                        {students.map((student) => (
+                            <tr key={student.db_id ?? student.id}>
                                 <td className="text-secondary">{student.id}</td>
                                 <td className="font-medium">{student.name}</td>
                                 <td>{student.class}</td>
