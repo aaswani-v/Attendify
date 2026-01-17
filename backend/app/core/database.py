@@ -25,12 +25,12 @@ def create_db_engine(url):
     )
 
 try:
-    print(f"[INFO] Attempting to connect to database...")
+    print("[INFO] Attempting to connect to database...")
     engine = create_db_engine(primary_url)
     
     # Test connection
     with engine.connect() as connection:
-        print(f"[INFO] Successfully connected to primary database")
+        print("[INFO] Successfully connected to primary database")
         
 except Exception as e:
     print(f"[WARNING] Failed to connect to primary database: {e}")

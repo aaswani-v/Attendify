@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { attendanceService } from '../services/attendanceService';
 import { studentService } from '../services/studentService';
 import { fingerprintScanner, fingerprintUtils } from '../services/fingerprintScanner';
@@ -13,7 +14,9 @@ interface ManualStudent extends Student {
     registerMessage?: string;
 }
 
+// eslint-disable-next-line sonarjs/cognitive-complexity
 const MarkAttendancePage = () => {
+    const navigate = useNavigate();
     const [mode, setMode] = useState<'camera' | 'manual'>('camera');
     const [cameraError, setCameraError] = useState(false);
     const [scanning, setScanning] = useState(false);
@@ -40,10 +43,8 @@ const MarkAttendancePage = () => {
     const [submitMessage, setSubmitMessage] = useState<string | null>(null);
 
     const stopCamera = () => {
-        if (videoRef.current && videoRef.current.srcObject) {
-            const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
-            tracks.forEach(track => track.stop());
-        }
+        const stream = videoRef.current?.srcObject as MediaStream | null;
+        stream?.getTracks().forEach(track => track.stop());
     };
 
     useEffect(() => {
@@ -117,7 +118,8 @@ const MarkAttendancePage = () => {
                 latitude = position.coords.latitude;
                 longitude = position.coords.longitude;
             } catch (err) {
-                console.log('Location not available');
+                console.warn('Location not available', err);
+                setStatusMessage('⚠️ Location not available');
             }
 
             // Mark attendance via API
@@ -240,6 +242,22 @@ const MarkAttendancePage = () => {
         );
     };
 
+    const getStatusLabel = (status?: 'present' | 'absent' | 'not-marked') => {
+        if (status === 'present') return 'Present';
+        if (status === 'absent') return 'Absent';
+        return 'Not Marked';
+    };
+
+    const getStatusStyle = (message: string) => {
+        if (message.includes('✅')) {
+            return { bg: '#14532d22', color: '#14532d' };
+        }
+        if (message.includes('⚠️')) {
+            return { bg: '#92400e22', color: '#92400e' };
+        }
+        return { bg: '#991b1b22', color: '#991b1b' };
+    };
+
     const markAllPresent = () => {
         setStudents(prev => prev.map(s => ({ ...s, status: 'present' })));
     };
@@ -344,9 +362,9 @@ const MarkAttendancePage = () => {
                                     disabled={scanning}
                                 >
                                     {scanning ? (
-                                        <><i className='bx bx-loader-alt bx-spin'></i> Scanning...</>
+                                        <><i className='bx bx-loader-alt bx-spin'></i><span> Scanning...</span></>
                                     ) : (
-                                        <><i className='bx bx-scan'></i> Start Scan</>
+                                        <><i className='bx bx-scan'></i><span> Start Scan</span></>
                                     )}
                                 </button>
                                 {/* Temporary test button */}
@@ -357,33 +375,49 @@ const MarkAttendancePage = () => {
                                     Test Biometric
                                 </button>
                                 {/* Test scanner connection */}
+                                {(() => {
+                                    const isSupported = fingerprintScanner.isSupported();
+                                    let scannerColor = '#b91c1c';
+                                    if (scannerConnected) {
+                                        scannerColor = '#0f766e';
+                                    } else if (isSupported) {
+                                        scannerColor = '#0b74b8';
+                                    }
+                                    return (
+                                        <button
+                                            className="btn-control btn-scanner"
+                                            style={{ background: scannerColor }}
+                                            onClick={connectFingerprintScanner}
+                                            disabled={!isSupported}
+                                        >
+                                            {scannerConnected ? 'Scanner Connected' : 'Test Scanner'}
+                                        </button>
+                                    );
+                                })()}
                                 <button
-                                    className="btn-control btn-scanner"
-                                    style={{
-                                        background: scannerConnected
-                                            ? '#10b981'
-                                            : fingerprintScanner.isSupported()
-                                                ? '#0ea5e9'
-                                                : '#ef4444'
-                                    }}
-                                    onClick={connectFingerprintScanner}
-                                    disabled={!fingerprintScanner.isSupported()}
+                                    className="btn-control btn-register-student"
+                                    onClick={() => navigate('/dashboard/register-student')}
                                 >
-                                    {scannerConnected ? 'Scanner Connected' : 'Test Scanner'}
+                                    Register Student
                                 </button>
                             </div>
 
                             {statusMessage && (
+                                (() => {
+                                    const { bg, color } = getStatusStyle(statusMessage);
+                                    return (
                                 <div style={{ 
                                     padding: '12px', 
                                     margin: '10px 0',
                                     borderRadius: '8px',
-                                    background: statusMessage.includes('✅') ? '#16a34a22' : statusMessage.includes('⚠️') ? '#f59e0b22' : '#dc262622',
-                                    color: statusMessage.includes('✅') ? '#16a34a' : statusMessage.includes('⚠️') ? '#f59e0b' : '#dc2626',
+                                    background: bg,
+                                    color,
                                     textAlign: 'center'
                                 }}>
                                     {statusMessage}
                                 </div>
+                                    );
+                                })()
                             )}
 
                             {requireBiometric && (
@@ -441,7 +475,7 @@ const MarkAttendancePage = () => {
                                                 color: '#059669'
                                             }}>
                                                 <i className='bx bx-check-circle'></i>
-                                                Scanner Connected
+                                                <span>Scanner Connected</span>
                                             </div>
 
                                             {/* Fingerprint Scan Button */}
@@ -581,9 +615,9 @@ const MarkAttendancePage = () => {
                                 <div className="detected-list">
                                     <h4>Detected Students ({detectedStudents.length})</h4>
                                     <ul>
-                                        {detectedStudents.map((name, idx) => (
-                                            <li key={idx}>
-                                                <i className='bx bx-check-circle'></i> {name}
+                                        {detectedStudents.map((name) => (
+                                            <li key={name}>
+                                                <i className='bx bx-check-circle'></i><span> {name}</span>
                                             </li>
                                         ))}
                                     </ul>
@@ -654,8 +688,7 @@ const MarkAttendancePage = () => {
                                         </td>
                                         <td>
                                             <span className={`status-badge ${student.status}`}>
-                                                {student.status === 'present' ? 'Present' :
-                                                    student.status === 'absent' ? 'Absent' : 'Not Marked'}
+                                                {getStatusLabel(student.status)}
                                             </span>
                                         </td>
                                         <td>

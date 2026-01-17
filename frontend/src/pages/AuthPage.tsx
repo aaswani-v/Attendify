@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-// import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import type { UserRole } from '../types/auth.types';
 import './Auth.css';
@@ -30,8 +29,6 @@ const AuthPage = () => {
     const setError = setLocalError;
     const setLoading = setLocalLoading;
 
-    // const navigate = useNavigate();
-    // const { login } = useAuth();
 
     // Effect to apply theme to body/root
     useEffect(() => {
@@ -78,7 +75,8 @@ const AuthPage = () => {
 
     if (isAdmin) {
         return (
-            <div className="container" id="container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="auth-page">
+                <div className="container" id="container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                  <button className="theme-toggle" onClick={toggleTheme} title="Toggle Theme">
                     {theme === 'light' ? <i className='bx bxs-moon'></i> : <i className='bx bxs-sun'></i>}
                 </button>
@@ -139,7 +137,7 @@ const AuthPage = () => {
                             disabled={loading}
                         >
                             <i className='bx bxl-google' style={{ marginRight: '8px' }}></i>
-                            Sign in with Google
+                            <span>Sign in with Google</span>
                         </button>
                         <button 
                             type="button" 
@@ -151,13 +149,14 @@ const AuthPage = () => {
                         </button>
                     </form>
                 </div>
+                </div>
             </div>
         );
     }
 
     return (
-        // Note: 'right-panel-active' is the class from the original template logic often used for this slider
-        <div className={`container ${isFaculty ? 'right-panel-active' : ''}`} id="container">
+        <div className="auth-page">
+            <div className={`container ${isFaculty ? 'right-panel-active' : ''}`} id="container">
 
             {/* Theme Toggle Button */}
             <button className="theme-toggle" onClick={toggleTheme} title="Toggle Theme">
@@ -312,6 +311,7 @@ const AuthPage = () => {
                         </button>
                     </div>
                 </div>
+            </div>
             </div>
         </div>
     );

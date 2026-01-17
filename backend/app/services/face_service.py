@@ -97,5 +97,13 @@ class FaceService:
             print(f"[ERROR] Face verification failed: {e}")
             return {"status": "error", "message": str(e)}
 
+    def retrain_model(self) -> None:
+        """Force retraining from the face data folders."""
+        try:
+            if self._detector:
+                self._detector.force_retrain()
+        except Exception as exc:
+            print(f"[WARNING] Failed to retrain model: {exc}")
+
 # Global instance
 face_service = FaceService()

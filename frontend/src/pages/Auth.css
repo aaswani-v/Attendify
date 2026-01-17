@@ -64,6 +64,15 @@ body {
     align-items: center;
 }
 
+.auth-page {
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 12px;
+}
+
 .container {
     /* Force Light Theme Colors inside Container regardless of App Theme */
     --container-bg: #ffffff;

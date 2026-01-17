@@ -208,6 +208,14 @@
     background: #0ea5e9;
 }
 
+.btn-register-student {
+    background: #4338ca;
+}
+
+.btn-register-student:hover:not(:disabled) {
+    background: #3730a3;
+}
+
 .btn-scanner:hover:not(:disabled) {
     background: #0284c7;
 }
@@ -291,9 +299,9 @@
 }
 
 .btn-mark-all:hover {
-    background: #22c55e;
-    color: #fff;
-    border-color: #22c55e;
+    background: #15803d;
+    color: #f8fafc;
+    border-color: #15803d;
 }
 
 /* Students Table */
@@ -331,23 +339,23 @@
 }
 
 .status-badge.present {
-    background: rgba(34, 197, 94, 0.1);
-    color: #16a34a;
+    background: #14532d;
+    color: #f8fafc;
 }
 
 .status-badge.absent {
-    background: rgba(239, 68, 68, 0.1);
-    color: #dc2626;
+    background: #7f1d1d;
+    color: #f8fafc;
 }
 
 .status-badge.not-marked {
     background: #f1f5f9;
-    color: #94a3b8;
+    color: #0f172a;
 }
 
 .status-badge.registered {
-    background: rgba(14, 165, 233, 0.12);
-    color: #0284c7;
+    background: #075985;
+    color: #f8fafc;
 }
 
 /* Action Buttons */
@@ -370,23 +378,23 @@
 }
 
 .btn-present {
-    background: rgba(34, 197, 94, 0.1);
-    color: #16a34a;
+    background: #14532d;
+    color: #f8fafc;
 }
 
 .btn-present:hover {
-    background: #22c55e;
-    color: #fff;
+    background: #166534;
+    color: #f8fafc;
 }
 
 .btn-absent {
-    background: rgba(239, 68, 68, 0.1);
-    color: #dc2626;
+    background: #7f1d1d;
+    color: #f8fafc;
 }
 
 .btn-absent:hover {
-    background: #ef4444;
-    color: #fff;
+    background: #991b1b;
+    color: #f8fafc;
 }
 
 .register-cell {
@@ -397,8 +405,8 @@
 }
 
 .btn-register {
-    background: #0ea5e9;
-    color: #fff;
+    background: #1d4ed8;
+    color: #f8fafc;
     border: none;
     padding: 8px 14px;
     border-radius: 8px;
@@ -413,7 +421,7 @@
 }
 
 .btn-register:hover:not(:disabled) {
-    background: #0284c7;
+    background: #1e40af;
     transform: translateY(-1px);
 }
 
@@ -479,9 +487,9 @@ body.dark-mode .mark-attendance-page .mode-toggle button {
 }
 
 body.dark-mode .mark-attendance-page .mode-toggle button.active {
-    background: var(--primary-green, #22c55e);
-    color: #fff;
-    border-color: var(--primary-green, #22c55e);
+    background: #15803d;
+    color: #f8fafc;
+    border-color: #15803d;
 }
 
 body.dark-mode .mark-attendance-page .camera-error-card,

@@ -13,6 +13,7 @@ from app.models.user import User, UserRole
 from app.api.routes.timetable import router as timetable_router
 from app.api.routes.attendance import router as attendance_router
 from app.api.routes.sessions import router as sessions_router  # NEW: Sessions API
+from app.api.routes.analytics import router as analytics_router
 from app.core.config import config
 from app.core.config_thresholds import thresholds  # NEW: Thresholds config
 from app.core.database import create_tables, engine, SessionLocal
@@ -56,6 +57,10 @@ def ensure_user_schema() -> None:
             conn.execute(text("UPDATE users SET role = 'STUDENT' WHERE role IS NULL"))
             conn.execute(text("UPDATE users SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL"))
 
+            # Backfill missing created_at values
+            if "created_at" in existing_columns:
+                conn.execute(text("UPDATE users SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL"))
+
             conn.commit()
     except Exception as exc:
         logger.error(f"Failed to ensure user schema: {exc}")
@@ -98,7 +103,7 @@ def ensure_default_users():
                 existing.password_hash = get_password_hash(data["password"])
                 existing.role = data["role"]
                 existing.is_active = True
-                if not existing.created_at:
+                if existing.created_at is None:
                     existing.created_at = datetime.now(timezone.utc)
                 continue
             user = User(
@@ -143,6 +148,7 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(timetable_router)
 app.include_router(attendance_router, prefix="/api/attendance", tags=["Attendance"])
 app.include_router(sessions_router, prefix="/api/sessions", tags=["Sessions"])  # Added sessions router
+app.include_router(analytics_router, prefix="/api/analytics", tags=["Analytics"])
 app.include_router(notices.router, prefix="/api/notices", tags=["Notices"])
 app.include_router(users_router.router, prefix="/api", tags=["Users"])
 
