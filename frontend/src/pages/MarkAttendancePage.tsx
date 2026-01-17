@@ -8,6 +8,9 @@ import './MarkAttendancePage.css';
 // Manual student type for UI state management
 interface ManualStudent extends Student {
     status?: 'present' | 'absent' | 'not-marked';
+    registered?: boolean;
+    registering?: boolean;
+    registerMessage?: string;
 }
 
 const MarkAttendancePage = () => {
@@ -27,10 +30,14 @@ const MarkAttendancePage = () => {
     const [scannerConnected, setScannerConnected] = useState(false);
     const [scanningFingerprint, setScanningFingerprint] = useState(false);
     const [pendingFaceData, setPendingFaceData] = useState<{blob: Blob, latitude?: number, longitude?: number} | null>(null);
+    const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
     const videoRef = useRef<HTMLVideoElement>(null);
 
     // Students data for manual mode
     const [students, setStudents] = useState<ManualStudent[]>([]);
+    const [registeringId, setRegisteringId] = useState<number | null>(null);
+    const [submittingManual, setSubmittingManual] = useState(false);
+    const [submitMessage, setSubmitMessage] = useState<string | null>(null);
 
     const stopCamera = () => {
         if (videoRef.current && videoRef.current.srcObject) {
@@ -57,7 +64,7 @@ const MarkAttendancePage = () => {
             try {
                 const data = await studentService.getAll();
                 // Initialize with not-marked status
-                const manualData: ManualStudent[] = data.map(s => ({ ...s, status: 'not-marked' }));
+                const manualData: ManualStudent[] = data.map(s => ({ ...s, status: 'not-marked', registered: true }));
                 setStudents(manualData);
             } catch (error) {
                 console.error('Failed to load students:', error);
@@ -235,6 +242,51 @@ const MarkAttendancePage = () => {
 
     const markAllPresent = () => {
         setStudents(prev => prev.map(s => ({ ...s, status: 'present' })));
+    };
+
+    const triggerRegisterFace = (studentId: number) => {
+        const input = fileInputRefs.current[studentId];
+        input?.click();
+    };
+
+    const handleRegisterFace = async (student: ManualStudent, file?: File | null) => {
+        if (!file) return;
+
+        setRegisteringId(student.id);
+        setStudents(prev => prev.map(s => s.id === student.id ? { ...s, registering: true, registerMessage: 'Uploading face...' } : s));
+
+        try {
+            const res = await studentService.register(student.name, student.roll_number, file);
+            setStudents(prev => prev.map(s => s.id === student.id ? { ...s, registered: true, registering: false, registerMessage: res.message || 'Registered successfully' } : s));
+        } catch (error: any) {
+            const msg = error?.response?.data?.message || 'Failed to register face';
+            setStudents(prev => prev.map(s => s.id === student.id ? { ...s, registering: false, registerMessage: `❌ ${msg}` } : s));
+        } finally {
+            setRegisteringId(null);
+        }
+    };
+
+    const handleManualSubmit = async () => {
+        const entries = students
+            .filter(s => s.status && s.status !== 'not-marked')
+            .map(s => ({ student_id: s.id, status: s.status as 'present' | 'absent' }));
+
+        if (entries.length === 0) {
+            setSubmitMessage('Please mark at least one student before submitting.');
+            return;
+        }
+
+        try {
+            setSubmittingManual(true);
+            setSubmitMessage(null);
+            const res = await attendanceService.submitManual(entries, undefined, 'Manual UI');
+            setSubmitMessage(`${res.message} (created: ${res.created}, updated: ${res.updated})`);
+        } catch (error: any) {
+            const msg = error?.response?.data?.detail || error?.message || 'Manual submit failed';
+            setSubmitMessage(`❌ ${msg}`);
+        } finally {
+            setSubmittingManual(false);
+        }
     };
 
     return (
@@ -557,6 +609,7 @@ const MarkAttendancePage = () => {
                                 <tr>
                                     <th>Roll No</th>
                                     <th>Name</th>
+                                    <th>Register Face</th>
                                     <th>Status</th>
                                     <th>Action</th>
                                 </tr>
@@ -566,6 +619,39 @@ const MarkAttendancePage = () => {
                                     <tr key={student.id}>
                                         <td>{student.roll_number}</td>
                                         <td>{student.name}</td>
+                                        <td>
+                                            <div className="register-cell">
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    style={{ display: 'none' }}
+                                                    ref={(el) => { fileInputRefs.current[student.id] = el; }}
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        handleRegisterFace(student, file);
+                                                        e.target.value = '';
+                                                    }}
+                                                />
+                                                <button
+                                                    className="btn-register"
+                                                    onClick={() => triggerRegisterFace(student.id)}
+                                                    disabled={registeringId === student.id}
+                                                    title="Upload a face photo to register"
+                                                >
+                                                    {student.registering || registeringId === student.id ? (
+                                                        <><i className='bx bx-loader-alt bx-spin'></i> Registering...</>
+                                                    ) : (
+                                                        <><i className='bx bx-user-plus'></i> {student.registered ? 'Re-register' : 'Register Face'}</>
+                                                    )}
+                                                </button>
+                                                {student.registerMessage && (
+                                                    <div className="register-hint">{student.registerMessage}</div>
+                                                )}
+                                                {student.registered && !student.registerMessage && (
+                                                    <span className="status-badge registered">Registered</span>
+                                                )}
+                                            </div>
+                                        </td>
                                         <td>
                                             <span className={`status-badge ${student.status}`}>
                                                 {student.status === 'present' ? 'Present' :
@@ -593,9 +679,16 @@ const MarkAttendancePage = () => {
                             </tbody>
                         </table>
                         <div className="submit-section">
-                            <button className="btn-submit">
-                                <i className='bx bx-save'></i> Submit Attendance
+                            <button className="btn-submit" onClick={handleManualSubmit} disabled={submittingManual}>
+                                {submittingManual ? (
+                                    <><i className='bx bx-loader-alt bx-spin'></i> Submitting...</>
+                                ) : (
+                                    <><i className='bx bx-save'></i> Submit Attendance</>
+                                )}
                             </button>
+                            {submitMessage && (
+                                <div className="submit-hint">{submitMessage}</div>
+                            )}
                         </div>
                     </div>
                 </div>

@@ -10,9 +10,9 @@ from enum import Enum
 
 class UserRole(str, Enum):
     """User role enumeration"""
-    STUDENT = "student"
-    FACULTY = "faculty"
-    ADMIN = "admin"
+    STUDENT = "STUDENT"
+    FACULTY = "FACULTY"
+    ADMIN = "ADMIN"
 
 
 class UserLogin(BaseModel):

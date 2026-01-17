@@ -52,12 +52,14 @@ def init_users():
 
         for data in users_data:
             user = db.query(User).filter(User.username == data["username"]).first()
+            hashed = pwd_context.hash(data["password"])
             if user:
                 # Update existing user
-                user.hashed_password = pwd_context.hash(data["password"])
+                user.password_hash = hashed
                 user.email = data["email"]
                 user.full_name = data["full_name"]
                 user.role = data["role"]
+                user.is_active = True
                 print(f"   Updated user: {data['username']}")
             else:
                 # Create new user
@@ -65,7 +67,7 @@ def init_users():
                     username=data["username"],
                     email=data["email"],
                     full_name=data["full_name"],
-                    hashed_password=pwd_context.hash(data["password"]),
+                    password_hash=hashed,
                     role=data["role"],
                     is_active=True
                 )

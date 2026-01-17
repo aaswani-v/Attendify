@@ -7,6 +7,10 @@ interface BottomNavProps {
 }
 
 const BottomNav: React.FC<BottomNavProps> = ({ role }) => {
+    const normalizedRole = role.toLowerCase() as BottomNavProps['role'];
+    const userName = localStorage.getItem('userName') || 'User';
+    const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=3B753D&color=fff`;
+
     return (
         <div className="bottom-nav-container">
             <nav className="bottom-nav">
@@ -15,7 +19,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ role }) => {
                     <span>Dashboard</span>
                 </NavLink>
 
-                {role === 'faculty' && (
+                {(normalizedRole === 'faculty' || normalizedRole === 'admin') && (
                     <>
                         <NavLink to="/dashboard/mark-attendance" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                             <i className='bx bx-scan'></i>
@@ -29,18 +33,35 @@ const BottomNav: React.FC<BottomNavProps> = ({ role }) => {
                             <i className='bx bx-bar-chart-alt-2'></i>
                             <span>Reports</span>
                         </NavLink>
+                        <NavLink to="/dashboard/analytics" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                            <i className='bx bx-line-chart'></i>
+                            <span>Analytics</span>
+                        </NavLink>
                         <NavLink to="/dashboard/notices" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                             <i className='bx bx-bell'></i>
                             <span>Notices</span>
                         </NavLink>
-                        {/* Adding Schedule if requested, though originally student only */}
                         <NavLink to="/dashboard/schedule" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                             <i className='bx bx-calendar'></i>
                             <span>Schedule</span>
                         </NavLink>
                     </>
                 )}
-                {role === 'student' && (
+
+                {normalizedRole === 'admin' && (
+                    <>
+                        <NavLink to="/dashboard/manage-courses" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                            <i className='bx bx-book'></i>
+                            <span>Courses</span>
+                        </NavLink>
+                        <NavLink to="/dashboard/manage-users" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                            <i className='bx bx-user-plus'></i>
+                            <span>Users</span>
+                        </NavLink>
+                    </>
+                )}
+
+                {normalizedRole === 'student' && (
                     <>
                         <NavLink to="/dashboard/mark-attendance" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                             <i className='bx bx-scan'></i>
@@ -63,7 +84,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ role }) => {
                     <div className="nav-profile-info">
                         <span className="nav-profile-name">My Profile</span>
                     </div>
-                    <img src="https://ui-avatars.com/api/?name=User&background=3B753D&color=fff" alt="Profile" className="nav-avatar" />
+                    <img src={avatarUrl} alt="Profile" className="nav-avatar" />
                 </NavLink>
             </nav>
         </div>

@@ -44,12 +44,14 @@ app.add_middleware(
 
 # Include routers
 from app.api.routes import notices, auth
+from app.api.routes import users as users_router
 app.include_router(auth.router, prefix="/api")
 app.include_router(timetable_router)
 app.include_router(attendance_router, prefix="/api/attendance", tags=["Attendance"])
 app.include_router(sessions_router, prefix="/api/sessions", tags=["Sessions"])  # Added sessions router
 app.include_router(notices.router, prefix="/api/notices", tags=["Notices"])
 app.include_router(sessions_router, prefix="/api/sessions", tags=["Sessions"])
+app.include_router(users_router.router, prefix="/api", tags=["Users"])
 
 # ==================== SEEDING & UTILITIES ====================
 

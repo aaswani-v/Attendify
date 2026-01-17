@@ -1,20 +1,21 @@
 """
 User Model
-Defines the User entity for authentication
+Defines the User entity for authentication with strict RBAC
 """
 
-from sqlalchemy import Column, Integer, String, Boolean, Enum as SQLEnum
-from sqlalchemy.ext.declarative import declarative_base
+from datetime import datetime
 from enum import Enum
 
-Base = declarative_base()
+from sqlalchemy import Boolean, Column, DateTime, Enum as SQLEnum, Integer, String
+
+from app.core.database import Base
 
 
 class UserRole(str, Enum):
     """User role enumeration"""
-    STUDENT = "student"
-    FACULTY = "faculty"
-    ADMIN = "admin"
+    STUDENT = "STUDENT"
+    FACULTY = "FACULTY"
+    ADMIN = "ADMIN"
 
 
 class User(Base):
@@ -25,9 +26,10 @@ class User(Base):
     username = Column(String(50), unique=True, index=True, nullable=False)
     email = Column(String(100), unique=True, index=True)
     full_name = Column(String(100))
-    hashed_password = Column(String(255), nullable=False)
-    role = Column(SQLEnum(UserRole), default=UserRole.STUDENT, nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    role = Column(SQLEnum(UserRole, name="user_roles"), default=UserRole.STUDENT, nullable=False)
     is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<User(username='{self.username}', role='{self.role}')>"

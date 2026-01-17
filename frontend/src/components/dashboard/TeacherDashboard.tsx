@@ -3,7 +3,11 @@ import { attendanceStatsService } from '../../services/attendanceStatsService';
 import type { AttendanceStats } from '../../services/attendanceStatsService';
 import './TeacherDashboard.css';
 
-const TeacherDashboard = () => {
+interface TeacherDashboardProps {
+    role?: string;
+}
+
+const TeacherDashboard = ({ role }: TeacherDashboardProps) => {
     const [stats, setStats] = useState<AttendanceStats>({
         total_students: 0,
         present_today: 0,
@@ -27,6 +31,7 @@ const TeacherDashboard = () => {
 
     const maxVal = 60; // Max value for chart scale
     const userName = localStorage.getItem('userName') || 'Faculty';
+    const roleLabel = role === 'ADMIN' ? 'Admin' : 'Faculty';
 
     return (
         <div className="teacher-dashboard">
@@ -42,7 +47,7 @@ const TeacherDashboard = () => {
                     <div className="td-user-section">
                         <div className="td-user-info">
                             <span className="user-name">{userName}</span>
-                            <span className="user-role">Faculty</span>
+                            <span className="user-role">{roleLabel}</span>
                         </div>
                         <img
                             src={`https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=fff&color=3B753D&size=40`}

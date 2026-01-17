@@ -63,17 +63,17 @@ const AuthPage = () => {
 
     const handleStudentLogin = (e: React.FormEvent) => {
         e.preventDefault();
-        handleLogin(studentUser, studentPass, 'student');
+        handleLogin(studentUser, studentPass, 'STUDENT');
     };
 
     const handleFacultyLogin = (e: React.FormEvent) => {
         e.preventDefault();
-        handleLogin(facultyUser, facultyPass, 'faculty');
+        handleLogin(facultyUser, facultyPass, 'FACULTY');
     };
 
     const handleAdminLogin = (e: React.FormEvent) => {
         e.preventDefault();
-        handleLogin(adminUser, adminPass, 'admin');
+        handleLogin(adminUser, adminPass, 'ADMIN');
     };
 
     if (isAdmin) {

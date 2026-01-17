@@ -316,6 +316,59 @@
     color: #ef4444;
 }
 
+/* Responsive layout */
+@media (max-width: 960px) {
+    .td-header-content {
+        padding: 0 8px;
+    }
+
+    .stats-row {
+        flex-direction: column;
+    }
+
+    .chart-container {
+        flex-direction: column;
+        height: auto;
+    }
+
+    .y-axis {
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
+        padding-bottom: 10px;
+    }
+
+    .bars-container {
+        padding-bottom: 50px;
+    }
+}
+
+@media (max-width: 640px) {
+    .td-header {
+        height: auto;
+        padding: 12px 16px;
+    }
+
+    .td-header-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .td-main-content {
+        margin-top: 120px;
+        padding: 0 12px 80px 12px;
+    }
+
+    .stat-card {
+        min-width: 100%;
+    }
+
+    .chart-container {
+        height: 260px;
+    }
+}
+
 /* Dark Mode Styles */
 body.dark-mode .teacher-dashboard .stat-card {
     background: var(--bg-card, #1e293b);

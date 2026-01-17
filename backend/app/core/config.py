@@ -15,6 +15,8 @@ class Config:
     DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///attendance.db")
     DEBUG_MODE = os.getenv("DEBUG_MODE", "false").lower() == "true"
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+    AUTH_SECRET = os.getenv("AUTH_SECRET", "change-me-in-prod")
+    ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
     
     # CORS Settings
     # MUST be specific for allow_credentials=True

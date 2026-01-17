@@ -6,6 +6,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ role }) => {
+    const normalizedRole = role.toLowerCase() as SidebarProps['role'];
     return (
         <aside className="sidebar">
             <div className="logo">
@@ -14,7 +15,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role }) => {
             <nav>
                 <ul>
 
-                    {role === 'student' && (
+                    {normalizedRole === 'student' && (
                         <>
                             <li>
                                 <NavLink to="/dashboard/schedule" className={({ isActive }) => isActive ? 'active' : ''}>
@@ -33,7 +34,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role }) => {
                             </li>
                         </>
                     )}
-                    {(role === 'faculty' || role === 'admin') && (
+                    {(normalizedRole === 'faculty' || normalizedRole === 'admin') && (
                         <>
                             <li>
                                 <NavLink to="/dashboard/mark-attendance" className={({ isActive }) => isActive ? 'active' : ''}>
@@ -57,7 +58,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role }) => {
                             </li>
                         </>
                     )}
-                    {role === 'admin' && (
+                    {normalizedRole === 'admin' && (
                         <>
                             <li>
                                 <NavLink to="/dashboard/manage-courses" className={({ isActive }) => isActive ? 'active' : ''}>

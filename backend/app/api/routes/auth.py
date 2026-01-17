@@ -3,25 +3,27 @@ Authentication Routes
 Handles user login, registration, and token management
 """
 
-from fastapi import APIRouter, HTTPException, Depends, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from typing import Optional
-from jose import jwt, JWTError
-from passlib.context import CryptContext
 
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from app.core.config import config
 from app.core.database import get_db
+from app.core.firebase import verify_firebase_token
 from app.models.user import User, UserRole
 from app.schemas.auth import (
-    UserLogin, 
-    UserRegister, 
-    UserResponse, 
+    CurrentUser,
     TokenResponse,
-    CurrentUser
+    UserLogin,
+    UserRegister,
+    UserResponse,
 )
-from app.core.firebase import verify_firebase_token
-from pydantic import BaseModel
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -58,7 +60,7 @@ async def login_with_google(request: GoogleLoginRequest, db: Session = Depends(g
             username=email.split('@')[0], # Use part of email as username
             email=email,
             full_name=firebase_user.get('name', 'Firebase User'),
-            hashed_password=get_password_hash("firebase_login_" + email), # Dummy password
+            password_hash=get_password_hash("firebase_login_" + email), # Dummy password
             role=UserRole.STUDENT, # Default role
             is_active=True
         )
@@ -93,9 +95,9 @@ async def login_with_google(request: GoogleLoginRequest, db: Session = Depends(g
     }
 
 # Security
-SECRET_KEY = "your-secret-key-change-in-production"  # TODO: Move to environment variable
+SECRET_KEY = config.AUTH_SECRET
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = config.ACCESS_TOKEN_EXPIRE_MINUTES
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
@@ -125,7 +127,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> User:
     """Get current authenticated user from JWT token"""
     credentials_exception = HTTPException(
@@ -145,6 +147,30 @@ async def get_current_user(
     if user is None:
         raise credentials_exception
     return user
+
+
+def require_admin(current_user: User = Depends(get_current_user)) -> User:
+    """Enforce admin-only access."""
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required",
+        )
+    return current_user
+
+
+def require_role(allowed_roles: set[UserRole]):
+    """Factory for role-based dependency with fail-closed behavior."""
+
+    def _require(current_user: User = Depends(get_current_user)) -> User:
+        if current_user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient privileges",
+            )
+        return current_user
+
+    return _require
 
 
 @router.post("/register", response_model=UserResponse)
@@ -173,7 +199,7 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
         username=user_data.username,
         email=user_data.email,
         full_name=user_data.full_name,
-        hashed_password=hashed_password,
+        password_hash=hashed_password,
         role=user_data.role,
         is_active=True
     )
@@ -192,8 +218,8 @@ async def login(
 ):
     """Login user and return access token"""
     user = db.query(User).filter(User.username == form_data.username).first()
-    
-    if not user or not verify_password(form_data.password, user.hashed_password):
+
+    if not user or not verify_password(form_data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",

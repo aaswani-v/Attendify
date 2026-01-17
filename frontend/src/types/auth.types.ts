@@ -2,7 +2,7 @@
  * Authentication & User Types
  */
 
-export type UserRole = 'student' | 'faculty' | 'admin';
+export type UserRole = 'STUDENT' | 'FACULTY' | 'ADMIN';
 
 export interface User {
   id: string;

@@ -28,9 +28,21 @@ DATA_FACE_DIR = Path(__file__).resolve().parent.parent.parent / "models" / "_dat
 class OverrideRequest(BaseModel):
     """Manual attendance override by faculty"""
     student_id: int
-    session_id: int
+    session_id: int | None = None
     reason: str
     override_by: str  # Faculty name/ID
+
+
+class ManualSubmitItem(BaseModel):
+    student_id: int
+    status: str  # present | absent
+    note: str | None = None
+
+
+class ManualSubmitRequest(BaseModel):
+    entries: list[ManualSubmitItem]
+    session_id: int | None = None
+    submitted_by: str | None = None
 
 
 class AttendanceMarkResponse(BaseModel):
@@ -449,12 +461,13 @@ async def manual_override(
     if not student:
         raise HTTPException(404, "Student not found")
     
-    # Validate session
-    session = db.query(AttendanceSession).filter(
-        AttendanceSession.id == data.session_id
-    ).first()
-    if not session:
-        raise HTTPException(404, "Session not found")
+    session = None
+    if data.session_id:
+        session = db.query(AttendanceSession).filter(
+            AttendanceSession.id == data.session_id
+        ).first()
+        if not session:
+            raise HTTPException(404, "Session not found")
     
     # Check for existing attendance
     existing = db.query(AttendanceLog).filter(
@@ -493,6 +506,70 @@ async def manual_override(
         "log_id": log.id,
         "student_name": student.name,
         "override_by": data.override_by
+    }
+
+
+@router.post("/manual/submit")
+async def manual_bulk_submit(
+    payload: ManualSubmitRequest,
+    db: Session = Depends(get_db)
+):
+    """Bulk manual attendance submission (present/absent) with audit."""
+
+    if not payload.entries:
+        raise HTTPException(400, "No entries provided")
+
+    session = None
+    if payload.session_id:
+        session = db.query(AttendanceSession).filter(AttendanceSession.id == payload.session_id).first()
+        if not session:
+            raise HTTPException(404, "Session not found")
+
+    created = 0
+    updated = 0
+
+    for entry in payload.entries:
+        student = db.query(Student).filter(Student.id == entry.student_id).first()
+        if not student:
+            continue  # skip invalid
+
+        status_label = "Present (Manual)" if entry.status.lower() == "present" else "Absent (Manual)"
+
+        existing = db.query(AttendanceLog).filter(
+            AttendanceLog.student_id == entry.student_id,
+            AttendanceLog.session_id == payload.session_id,
+        ).first()
+
+        if existing:
+            existing.status = status_label
+            existing.timestamp = datetime.utcnow()
+            existing.notes = entry.note or existing.notes
+            existing.verification_method = "Manual Entry"
+            updated += 1
+        else:
+            log = AttendanceLog(
+                student_id=entry.student_id,
+                session_id=payload.session_id,
+                status=status_label,
+                confidence=100.0,
+                avg_confidence=100.0,
+                confidence_label="MANUAL",
+                is_proxy_suspected=False,
+                verification_method="Manual Entry",
+                notes=entry.note or f"Manual submit by {payload.submitted_by or 'manual UI'}",
+                frame_count=0,
+                liveness_passed=False,
+            )
+            db.add(log)
+            created += 1
+
+    db.commit()
+
+    return {
+        "message": "Manual attendance submitted",
+        "created": created,
+        "updated": updated,
+        "session_id": payload.session_id,
     }
 
 

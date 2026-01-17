@@ -53,4 +53,16 @@ export const attendanceService = {
         const response = await apiClient.get<AttendanceLogEntry[]>('/api/attendance/logs');
         return response.data;
     },
+
+    /**
+     * Submit manual attendance (present/absent) for a list of students
+     */
+    async submitManual(entries: { student_id: number; status: 'present' | 'absent'; note?: string }[], session_id?: number, submitted_by?: string) {
+        const response = await apiClient.post('/api/attendance/manual/submit', {
+            entries,
+            session_id,
+            submitted_by,
+        });
+        return response.data as { message: string; created: number; updated: number; session_id?: number };
+    },
 };

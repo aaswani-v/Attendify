@@ -2,11 +2,11 @@ import TeacherDashboard from '../components/dashboard/TeacherDashboard';
 import StudentDashboard from '../components/dashboard/StudentDashboard';
 
 const Dashboard = () => {
-    // Get role from localStorage or default to student
-    const role = localStorage.getItem('userRole') || 'student';
+    // Normalize role casing to avoid visibility issues
+    const storedRole = (localStorage.getItem('userRole') || 'STUDENT').toUpperCase();
 
-    if (role === 'faculty' || role === 'admin') {
-        return <TeacherDashboard />;
+    if (storedRole === 'FACULTY' || storedRole === 'ADMIN') {
+        return <TeacherDashboard role={storedRole} />;
     }
 
     // Default student view
